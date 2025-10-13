@@ -1,8 +1,9 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, screen, Tray, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 
 let mainWindow;
+let tray = null;
 const STORAGE_PATH = path.join(app.getPath('userData'), 'widgets.json');
 
 function createWindow() {
@@ -20,6 +21,7 @@ function createWindow() {
     transparent: true,
     alwaysOnTop: true,
     resizable: true,
+    icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -39,6 +41,14 @@ function createWindow() {
   // Handle ESC key to close
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.key === 'Escape' && input.type === 'keyDown') {
+      mainWindow.hide();
+    }
+  });
+
+  // Prevent window from closing, just hide it instead
+  mainWindow.on('close', (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault();
       mainWindow.hide();
     }
   });
@@ -67,8 +77,49 @@ function toggleWindow() {
   }
 }
 
+function createTray() {
+  // Use the icon.png file for the tray icon
+  const iconPath = path.join(__dirname, 'icon.png');
+  tray = new Tray(iconPath);
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show Overlay',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    },
+    {
+      label: 'Toggle Overlay (Ctrl+Shift+Space)',
+      click: () => {
+        toggleWindow();
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      click: () => {
+        app.isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setToolTip('Overlay Widgets');
+  tray.setContextMenu(contextMenu);
+
+  // Double click to toggle window
+  tray.on('double-click', () => {
+    toggleWindow();
+  });
+}
+
 app.whenReady().then(() => {
   createWindow();
+  createTray();
 
   // Register global shortcut to toggle overlay (Ctrl+Shift+Space)
   const ret = globalShortcut.register('CommandOrControl+Shift+Space', () => {
@@ -87,9 +138,12 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  // Prevent app from quitting when window is closed
+  // App will stay in tray instead
+});
+
+app.on('before-quit', () => {
+  app.isQuitting = true;
 });
 
 app.on('will-quit', () => {

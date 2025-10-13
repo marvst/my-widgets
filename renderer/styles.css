@@ -13,7 +13,7 @@ body {
   padding: 20px;
   overflow: auto;
   height: 100vh;
-  -webkit-app-region: drag;
+  -webkit-app-region: no-drag;
 }
 
 button, input, form, .widgets-container, .widget, .add-widget-panel {
@@ -30,6 +30,7 @@ button, input, form, .widgets-container, .widget, .add-widget-panel {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 10px;
   backdrop-filter: blur(10px);
+  -webkit-app-region: drag;
 }
 
 .header h1 {

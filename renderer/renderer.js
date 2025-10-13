@@ -103,8 +103,15 @@ function createWidgetElement(widget) {
   const widthPercent = typeof widget.width === 'number' ? widget.width : 100;
   const heightPercent = typeof widget.height === 'number' ? widget.height : 100;
 
-  // Set width using percentage of container width (accounts for padding and gaps)
-  widgetDiv.style.width = widthPercent === 100 ? '100%' : `calc(${widthPercent}vw - ${widthPercent * 0.6}px)`;
+  // Set width using calc to account for gaps between widgets
+  // Gap is 20px, so we need to subtract proportionally
+  if (widthPercent === 100) {
+    widgetDiv.style.width = '100%';
+  } else {
+    widgetDiv.style.width = `calc(${widthPercent}% - ${20 * (1 - widthPercent / 100)}px)`;
+  }
+  widgetDiv.style.minWidth = '200px'; // Minimum width to prevent too small widgets
+  widgetDiv.style.flexShrink = '0'; // Prevent shrinking when wrapping
 
   // Set height - subtract body padding (40px), header (~70px), and gap (20px) = 130px
   widgetDiv.style.height = `calc(${heightPercent}vh - 130px)`;
@@ -149,8 +156,12 @@ function createWidgetElement(widget) {
   widthSelector.addEventListener('change', async (e) => {
     const newWidthPercent = parseInt(e.target.value);
 
-    // Apply new width (accounts for padding and gaps)
-    widgetDiv.style.width = newWidthPercent === 100 ? '100%' : `calc(${newWidthPercent}vw - ${newWidthPercent * 0.6}px)`;
+    // Apply new width accounting for gaps
+    if (newWidthPercent === 100) {
+      widgetDiv.style.width = '100%';
+    } else {
+      widgetDiv.style.width = `calc(${newWidthPercent}% - ${20 * (1 - newWidthPercent / 100)}px)`;
+    }
     widgetDiv.dataset.widthPercent = newWidthPercent;
 
     // Save to storage
@@ -329,21 +340,6 @@ function setupEventListeners() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !modalOverlay.classList.contains('hidden')) {
       hideModal();
-    }
-  });
-
-  // Close overlay when clicking on background (not on widgets or header)
-  document.body.addEventListener('click', (e) => {
-    // Don't close if modal is open
-    if (!modalOverlay.classList.contains('hidden')) {
-      return;
-    }
-
-    // Check if click was on background (body) and not on any widget or header
-    if (e.target === document.body ||
-        (e.target.classList.contains('widgets-container') && widgets.length > 0) ||
-        e.target.classList.contains('empty-state')) {
-      window.close();
     }
   });
 

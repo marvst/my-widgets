@@ -4,9 +4,10 @@ An Electron-based overlay application that allows you to add and view multiple w
 
 ## Features
 
+- **System Tray**: App runs in the background and stays in system tray
 - **Overlay Mode**: Transparent, frameless window that stays on top of other applications
 - **Quick Toggle**: Press `Ctrl+Shift+Space` to show/hide the overlay
-- **ESC to Close**: Press `ESC` to hide the overlay
+- **ESC to Close**: Press `ESC` to hide the overlay (app stays running in tray)
 - **Website Widgets**: Add any website as a widget that loads and displays live content
 - **Popup Support**: Websites can open popups that launch in your default browser
 - **Flexible Sizing**: Set custom dimensions or use 100% width/height for fullscreen widgets
@@ -72,6 +73,14 @@ npm start
 ### Keyboard Shortcuts
 - **Ctrl+Shift+Space**: Toggle overlay visibility
 - **ESC**: Hide the overlay
+
+### System Tray
+- The app runs in the system tray (notification area) even when the overlay is hidden
+- **Right-click the tray icon** to access the menu:
+  - Show Overlay: Bring the overlay window to front
+  - Toggle Overlay: Show/hide the overlay
+  - Quit: Exit the application completely
+- **Double-click the tray icon** to quickly toggle the overlay
 
 ### Adding Widgets
 1. Click the "+ Add Widget" button

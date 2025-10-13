@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Overlay Widgets</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header/Control Panel -->
+  <div class="header">
+    <h1>Quick Widgets</h1>
+    <div class="controls">
+      <button id="toggle-add-panel" class="btn-primary">+ Add Widget</button>
+    </div>
+  </div>
+
+  <!-- Modal Overlay -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <!-- Add Widget Modal -->
+    <div id="add-widget-modal" class="modal">
+      <div class="modal-header">
+        <h2>Add New Widget</h2>
+        <button type="button" id="close-modal" class="btn-close">&times;</button>
+      </div>
+      <form id="add-widget-form">
+        <div class="form-group">
+          <label for="widget-name">Name:</label>
+          <input type="text" id="widget-name" placeholder="e.g., YouTube, Gmail, etc." required>
+        </div>
+        <div class="form-group">
+          <label for="widget-url">URL:</label>
+          <input type="url" id="widget-url" placeholder="https://example.com" required>
+        </div>
+        <div class="form-group form-row">
+          <div>
+            <label for="widget-width">Width:</label>
+            <select id="widget-width" class="form-select">
+              <option value="10">10%</option>
+              <option value="20">20%</option>
+              <option value="30" selected>30%</option>
+              <option value="40">40%</option>
+              <option value="50">50%</option>
+              <option value="60">60%</option>
+              <option value="70">70%</option>
+              <option value="80">80%</option>
+              <option value="90">90%</option>
+              <option value="100">100% (Full Width)</option>
+            </select>
+          </div>
+          <div>
+            <label for="widget-height">Height:</label>
+            <select id="widget-height" class="form-select">
+              <option value="10">10%</option>
+              <option value="20">20%</option>
+              <option value="30">30%</option>
+              <option value="40" selected>40%</option>
+              <option value="50">50%</option>
+              <option value="60">60%</option>
+              <option value="70">70%</option>
+              <option value="80">80%</option>
+              <option value="90">90%</option>
+              <option value="100">100% (Full Height)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Add Widget</button>
+          <button type="button" id="cancel-add" class="btn-secondary">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Widgets Container -->
+  <div id="widgets-container" class="widgets-container">
+    <!-- Widgets will be dynamically added here -->
+  </div>
+
+  <!-- Instructions (shown when no widgets) -->
+  <div id="empty-state" class="empty-state">
+    <p>No widgets yet. Click "Add Widget" to get started!</p>
+    <p class="hint">Press ESC to hide this overlay</p>
+    <p class="hint">Press Ctrl+Shift+Space to toggle overlay</p>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

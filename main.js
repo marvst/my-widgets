@@ -4,7 +4,7 @@ const fs = require('fs').promises;
 
 let mainWindow;
 let tray = null;
-const STORAGE_PATH = path.join(app.getPath('userData'), 'widgets.json');
+const STORAGE_PATH = path.join(app.getPath('userData'), 'tabs.json');
 
 function createWindow() {
   // Get the display where the cursor is currently located
@@ -21,6 +21,7 @@ function createWindow() {
     transparent: true,
     alwaysOnTop: true,
     resizable: true,
+    show: false, // Don't show until ready
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -30,10 +31,17 @@ function createWindow() {
     }
   });
 
+  // Set bounds to full screen immediately before loading
+  mainWindow.setBounds({ x, y, width, height });
+
   mainWindow.loadFile('renderer/index.html');
 
-  // Maximize the window to fill the entire screen
-  mainWindow.maximize();
+  // Show window only after content is loaded
+  mainWindow.once('ready-to-show', () => {
+    // Ensure full screen size and show without animation
+    mainWindow.setBounds({ x, y, width, height });
+    mainWindow.show();
+  });
 
   // Open DevTools in development
   // mainWindow.webContents.openDevTools();
@@ -69,9 +77,9 @@ function toggleWindow() {
       const activeDisplay = screen.getDisplayNearestPoint(cursorPoint);
       const { x, y, width, height } = activeDisplay.workArea;
 
+      // Set bounds before showing to prevent resize animation
       mainWindow.setBounds({ x, y, width, height });
       mainWindow.show();
-      mainWindow.maximize();
       mainWindow.focus();
     }
   }
@@ -151,83 +159,23 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll();
 });
 
-// IPC handlers for widget management
-ipcMain.handle('get-widgets', async () => {
+// IPC handlers for tabs management
+ipcMain.handle('get-tabs', async () => {
   try {
     const data = await fs.readFile(STORAGE_PATH, 'utf8');
     return JSON.parse(data);
   } catch (error) {
-    // If file doesn't exist, return empty array
-    return [];
+    // If file doesn't exist, return empty structure
+    return { tabs: [], currentTabId: null };
   }
 });
 
-ipcMain.handle('save-widgets', async (event, widgets) => {
+ipcMain.handle('save-tabs', async (event, data) => {
   try {
-    await fs.writeFile(STORAGE_PATH, JSON.stringify(widgets, null, 2));
+    await fs.writeFile(STORAGE_PATH, JSON.stringify(data, null, 2));
     return { success: true };
   } catch (error) {
-    console.error('Error saving widgets:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('add-widget', async (event, widget) => {
-  try {
-    let widgets = [];
-    try {
-      const data = await fs.readFile(STORAGE_PATH, 'utf8');
-      widgets = JSON.parse(data);
-    } catch (error) {
-      // File doesn't exist yet
-    }
-
-    widgets.push({
-      id: Date.now().toString(),
-      name: widget.name,
-      url: widget.url,
-      width: widget.width || 30,  // Default to 30% width
-      height: widget.height || 40  // Default to 40% height
-    });
-
-    await fs.writeFile(STORAGE_PATH, JSON.stringify(widgets, null, 2));
-    return { success: true, widgets };
-  } catch (error) {
-    console.error('Error adding widget:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('remove-widget', async (event, widgetId) => {
-  try {
-    const data = await fs.readFile(STORAGE_PATH, 'utf8');
-    let widgets = JSON.parse(data);
-    widgets = widgets.filter(w => w.id !== widgetId);
-
-    await fs.writeFile(STORAGE_PATH, JSON.stringify(widgets, null, 2));
-    return { success: true, widgets };
-  } catch (error) {
-    console.error('Error removing widget:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('update-widget-size', async (event, widgetId, width, height) => {
-  try {
-    const data = await fs.readFile(STORAGE_PATH, 'utf8');
-    let widgets = JSON.parse(data);
-
-    const widget = widgets.find(w => w.id === widgetId);
-    if (widget) {
-      widget.width = width;
-      widget.height = height;
-      await fs.writeFile(STORAGE_PATH, JSON.stringify(widgets, null, 2));
-      return { success: true, widgets };
-    }
-
-    return { success: false, error: 'Widget not found' };
-  } catch (error) {
-    console.error('Error updating widget size:', error);
+    console.error('Error saving tabs:', error);
     return { success: false, error: error.message };
   }
 });

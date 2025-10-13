@@ -1,5 +1,6 @@
 // State
-let widgets = [];
+let tabs = [];
+let currentTabId = null;
 
 // DOM Elements
 const widgetsContainer = document.getElementById('widgets-container');
@@ -10,28 +11,149 @@ const addWidgetForm = document.getElementById('add-widget-form');
 const toggleAddPanelBtn = document.getElementById('toggle-add-panel');
 const closeModalBtn = document.getElementById('close-modal');
 const cancelAddBtn = document.getElementById('cancel-add');
+const tabsList = document.getElementById('tabs-list');
+const addTabBtn = document.getElementById('add-tab-btn');
 
 // Initialize
 async function init() {
-  await loadWidgets();
-  renderWidgets();
+  await loadTabs();
+  renderTabs();
+
+  // If no tabs exist, create a default one
+  if (tabs.length === 0) {
+    await addTab('Tab 1');
+  } else {
+    // Set first tab as active if no active tab
+    if (!currentTabId || !tabs.find(t => t.id === currentTabId)) {
+      currentTabId = tabs[0].id;
+    }
+    switchTab(currentTabId);
+  }
+
   setupEventListeners();
 }
 
-// Load widgets from storage
-async function loadWidgets() {
+// Load tabs from storage
+async function loadTabs() {
   try {
-    widgets = await window.electronAPI.getWidgets();
-    console.log('Loaded widgets:', widgets);
+    const data = await window.electronAPI.getTabs();
+    tabs = data.tabs || [];
+    currentTabId = data.currentTabId || null;
+    console.log('Loaded tabs:', tabs);
   } catch (error) {
-    console.error('Error loading widgets:', error);
-    widgets = [];
+    console.error('Error loading tabs:', error);
+    tabs = [];
+    currentTabId = null;
   }
 }
 
-// Render all widgets
+// Render tabs
+function renderTabs() {
+  tabsList.innerHTML = '';
+
+  tabs.forEach(tab => {
+    const tabElement = createTabElement(tab);
+    tabsList.appendChild(tabElement);
+  });
+}
+
+// Create tab element
+function createTabElement(tab) {
+  const tabDiv = document.createElement('div');
+  tabDiv.className = 'tab';
+  tabDiv.dataset.tabId = tab.id;
+
+  if (tab.id === currentTabId) {
+    tabDiv.classList.add('active');
+  }
+
+  const tabName = document.createElement('input');
+  tabName.className = 'tab-name-editable';
+  tabName.type = 'text';
+  tabName.value = tab.name;
+  tabName.readOnly = true;
+
+  // Double-click to edit tab name
+  tabName.addEventListener('dblclick', () => {
+    tabName.readOnly = false;
+    tabName.focus();
+    tabName.select();
+  });
+
+  // Save on blur or Enter
+  tabName.addEventListener('blur', () => {
+    tabName.readOnly = true;
+    if (tabName.value.trim()) {
+      renameTab(tab.id, tabName.value.trim());
+    } else {
+      tabName.value = tab.name;
+    }
+  });
+
+  tabName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      tabName.blur();
+    } else if (e.key === 'Escape') {
+      tabName.value = tab.name;
+      tabName.blur();
+    }
+  });
+
+  // Click to switch tab
+  tabDiv.addEventListener('click', (e) => {
+    if (e.target !== tabName && !tabName.readOnly) return;
+    if (tabName.readOnly) {
+      switchTab(tab.id);
+    }
+  });
+
+  // Close button
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'tab-close';
+  closeBtn.innerHTML = '×';
+  closeBtn.title = 'Close tab';
+  closeBtn.onclick = (e) => {
+    e.stopPropagation();
+    removeTab(tab.id);
+  };
+
+  tabDiv.appendChild(tabName);
+
+  // Only show close button if there's more than one tab
+  if (tabs.length > 1) {
+    tabDiv.appendChild(closeBtn);
+  }
+
+  return tabDiv;
+}
+
+// Switch to a tab
+function switchTab(tabId) {
+  currentTabId = tabId;
+  renderTabs();
+  renderWidgets();
+  saveTabs();
+}
+
+// Scroll tab into view
+function scrollTabIntoView(tabId) {
+  const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
+  if (tabElement) {
+    tabElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
+}
+
+// Render all widgets for current tab
 function renderWidgets() {
   widgetsContainer.innerHTML = '';
+
+  const currentTab = tabs.find(t => t.id === currentTabId);
+  if (!currentTab) {
+    emptyState.classList.remove('hidden');
+    return;
+  }
+
+  const widgets = currentTab.widgets || [];
 
   if (widgets.length === 0) {
     emptyState.classList.remove('hidden');
@@ -166,10 +288,14 @@ function createWidgetElement(widget) {
 
     // Save to storage
     const currentHeightPercent = parseInt(widgetDiv.dataset.heightPercent);
-    const result = await window.electronAPI.updateWidgetSize(widget.id, newWidthPercent, currentHeightPercent);
-    if (result.success) {
-      widgets = result.widgets;
-      console.log(`Widget ${widget.id} width updated to ${newWidthPercent}%`);
+    const currentTab = tabs.find(t => t.id === currentTabId);
+    if (currentTab) {
+      const widgetInTab = currentTab.widgets.find(w => w.id === widget.id);
+      if (widgetInTab) {
+        widgetInTab.width = newWidthPercent;
+        await saveTabs();
+        console.log(`Widget ${widget.id} width updated to ${newWidthPercent}%`);
+      }
     }
   });
 
@@ -183,10 +309,14 @@ function createWidgetElement(widget) {
 
     // Save to storage
     const currentWidthPercent = parseInt(widgetDiv.dataset.widthPercent);
-    const result = await window.electronAPI.updateWidgetSize(widget.id, currentWidthPercent, newHeightPercent);
-    if (result.success) {
-      widgets = result.widgets;
-      console.log(`Widget ${widget.id} height updated to ${newHeightPercent}%`);
+    const currentTab = tabs.find(t => t.id === currentTabId);
+    if (currentTab) {
+      const widgetInTab = currentTab.widgets.find(w => w.id === widget.id);
+      if (widgetInTab) {
+        widgetInTab.height = newHeightPercent;
+        await saveTabs();
+        console.log(`Widget ${widget.id} height updated to ${newHeightPercent}%`);
+      }
     }
   });
 
@@ -242,9 +372,77 @@ function createWidgetElement(widget) {
   return widgetDiv;
 }
 
-// Add new widget
+// Add new tab
+async function addTab(name) {
+  const newTab = {
+    id: Date.now().toString(),
+    name: name || `Tab ${tabs.length + 1}`,
+    widgets: []
+  };
+
+  tabs.push(newTab);
+  currentTabId = newTab.id;
+
+  await saveTabs();
+  renderTabs();
+  renderWidgets();
+}
+
+// Remove tab
+async function removeTab(tabId) {
+  if (tabs.length === 1) {
+    alert('Cannot remove the last tab');
+    return;
+  }
+
+  if (!confirm('Are you sure you want to remove this tab and all its widgets?')) {
+    return;
+  }
+
+  const tabIndex = tabs.findIndex(t => t.id === tabId);
+  if (tabIndex === -1) return;
+
+  tabs.splice(tabIndex, 1);
+
+  // Switch to another tab
+  if (currentTabId === tabId) {
+    currentTabId = tabs[Math.max(0, tabIndex - 1)].id;
+  }
+
+  await saveTabs();
+  renderTabs();
+  renderWidgets();
+}
+
+// Rename tab
+async function renameTab(tabId, newName) {
+  const tab = tabs.find(t => t.id === tabId);
+  if (tab) {
+    tab.name = newName;
+    await saveTabs();
+    renderTabs();
+  }
+}
+
+// Save tabs to storage
+async function saveTabs() {
+  try {
+    await window.electronAPI.saveTabs({ tabs, currentTabId });
+    console.log('Tabs saved');
+  } catch (error) {
+    console.error('Error saving tabs:', error);
+  }
+}
+
+// Add new widget to current tab
 async function addWidget(name, url, width, height) {
   try {
+    const currentTab = tabs.find(t => t.id === currentTabId);
+    if (!currentTab) {
+      alert('No active tab');
+      return;
+    }
+
     // Ensure URL has protocol
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://' + url;
@@ -254,41 +452,39 @@ async function addWidget(name, url, width, height) {
     const widthPercent = width === '100%' || width === 100 ? 100 : parseInt(width);
     const heightPercent = height === '100%' || height === 100 ? 100 : parseInt(height);
 
-    const result = await window.electronAPI.addWidget({
+    const newWidget = {
+      id: Date.now().toString(),
       name,
       url,
       width: widthPercent,
       height: heightPercent
-    });
+    };
 
-    if (result.success) {
-      widgets = result.widgets;
-      renderWidgets();
-      hideModal();
-    } else {
-      alert('Failed to add widget: ' + result.error);
-    }
+    currentTab.widgets.push(newWidget);
+
+    await saveTabs();
+    renderWidgets();
+    hideModal();
   } catch (error) {
     console.error('Error adding widget:', error);
     alert('Failed to add widget');
   }
 }
 
-// Remove widget
+// Remove widget from current tab
 async function removeWidget(widgetId) {
   if (!confirm('Are you sure you want to remove this widget?')) {
     return;
   }
 
   try {
-    const result = await window.electronAPI.removeWidget(widgetId);
+    const currentTab = tabs.find(t => t.id === currentTabId);
+    if (!currentTab) return;
 
-    if (result.success) {
-      widgets = result.widgets;
-      renderWidgets();
-    } else {
-      alert('Failed to remove widget: ' + result.error);
-    }
+    currentTab.widgets = currentTab.widgets.filter(w => w.id !== widgetId);
+
+    await saveTabs();
+    renderWidgets();
   } catch (error) {
     console.error('Error removing widget:', error);
     alert('Failed to remove widget');
@@ -320,6 +516,11 @@ function truncateUrl(url) {
 
 // Setup event listeners
 function setupEventListeners() {
+  // Add tab button
+  addTabBtn.addEventListener('click', () => {
+    addTab();
+  });
+
   // Open modal
   toggleAddPanelBtn.addEventListener('click', showModal);
 
@@ -340,6 +541,27 @@ function setupEventListeners() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !modalOverlay.classList.contains('hidden')) {
       hideModal();
+    }
+  });
+
+  // Tab navigation with arrow keys
+  document.addEventListener('keydown', (e) => {
+    // Don't navigate if modal is open or typing in an input
+    if (!modalOverlay.classList.contains('hidden')) return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    const currentIndex = tabs.findIndex(t => t.id === currentTabId);
+
+    if (e.key === 'ArrowLeft' && currentIndex > 0) {
+      // Navigate to previous tab
+      e.preventDefault();
+      switchTab(tabs[currentIndex - 1].id);
+      scrollTabIntoView(tabs[currentIndex - 1].id);
+    } else if (e.key === 'ArrowRight' && currentIndex < tabs.length - 1) {
+      // Navigate to next tab
+      e.preventDefault();
+      switchTab(tabs[currentIndex + 1].id);
+      scrollTabIntoView(tabs[currentIndex + 1].id);
     }
   });
 

@@ -67,6 +67,29 @@ function createWindow() {
   });
 }
 
+// Fade in animation for window
+function fadeInWindow() {
+  if (!mainWindow) return;
+
+  const steps = 20; // Number of animation steps
+  const duration = 300; // Total duration in ms
+  const interval = duration / steps;
+  let currentStep = 0;
+
+  mainWindow.setOpacity(0);
+
+  const fadeInterval = setInterval(() => {
+    currentStep++;
+    const opacity = currentStep / steps;
+    mainWindow.setOpacity(opacity);
+
+    if (currentStep >= steps) {
+      clearInterval(fadeInterval);
+      mainWindow.setOpacity(1);
+    }
+  }, interval);
+}
+
 // Toggle window visibility
 function toggleWindow() {
   if (mainWindow) {
@@ -82,6 +105,9 @@ function toggleWindow() {
       mainWindow.setBounds({ x, y, width, height });
       mainWindow.show();
       mainWindow.focus();
+
+      // Fade in the window
+      fadeInWindow();
     }
   }
 }

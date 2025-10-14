@@ -31,6 +31,11 @@ async function init() {
   }
 
   setupEventListeners();
+
+  // Listen for global Tab key press from main process
+  window.electronAPI.onSwitchNextTab(() => {
+    switchToNextTab();
+  });
 }
 
 // Load tabs from storage
@@ -135,6 +140,17 @@ function switchTab(tabId) {
   saveTabs();
 }
 
+// Switch to next tab (with wrapping)
+function switchToNextTab() {
+  if (tabs.length === 0) return;
+
+  const currentIndex = tabs.findIndex(t => t.id === currentTabId);
+  const nextIndex = (currentIndex + 1) % tabs.length;
+
+  switchTab(tabs[nextIndex].id);
+  scrollTabIntoView(tabs[nextIndex].id);
+}
+
 // Scroll tab into view
 function scrollTabIntoView(tabId) {
   const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
@@ -145,27 +161,65 @@ function scrollTabIntoView(tabId) {
 
 // Render all widgets for current tab
 function renderWidgets() {
-  widgetsContainer.innerHTML = '';
-
   const currentTab = tabs.find(t => t.id === currentTabId);
-  if (!currentTab) {
-    emptyState.classList.remove('hidden');
-    return;
-  }
 
-  const widgets = currentTab.widgets || [];
-
-  if (widgets.length === 0) {
+  // Handle empty state
+  if (!currentTab || !currentTab.widgets || currentTab.widgets.length === 0) {
     emptyState.classList.remove('hidden');
+    // Hide all widgets
+    const allWidgets = widgetsContainer.querySelectorAll('.widget');
+    allWidgets.forEach(w => w.style.display = 'none');
     return;
   }
 
   emptyState.classList.add('hidden');
 
-  widgets.forEach(widget => {
-    const widgetElement = createWidgetElement(widget);
-    widgetsContainer.appendChild(widgetElement);
+  // Show/hide widgets based on current tab
+  // Instead of destroying and recreating, we keep them in DOM
+  tabs.forEach(tab => {
+    if (!tab.widgets) return;
+
+    tab.widgets.forEach(widget => {
+      let widgetElement = document.querySelector(`[data-widget-id="${widget.id}"]`);
+
+      // Create widget element if it doesn't exist yet
+      if (!widgetElement) {
+        widgetElement = createWidgetElement(widget);
+        widgetsContainer.appendChild(widgetElement);
+      }
+
+      // Show/hide based on current tab
+      if (tab.id === currentTabId) {
+        widgetElement.style.display = 'flex';
+      } else {
+        widgetElement.style.display = 'none';
+      }
+    });
   });
+
+  // Focus the auto-focus widget if one is set
+  focusAutoFocusWidget();
+}
+
+// Focus the widget marked as auto-focus in current tab
+function focusAutoFocusWidget() {
+  const currentTab = tabs.find(t => t.id === currentTabId);
+  if (!currentTab) return;
+
+  const autoFocusWidget = currentTab.widgets.find(w => w.autoFocus);
+  if (!autoFocusWidget) return;
+
+  // Find the webview for this widget and focus it
+  setTimeout(() => {
+    const widgetElement = document.querySelector(`[data-widget-id="${autoFocusWidget.id}"]`);
+    if (widgetElement) {
+      const webview = widgetElement.querySelector('webview');
+      if (webview) {
+        webview.focus();
+        console.log(`Auto-focused widget: ${autoFocusWidget.name}`);
+      }
+    }
+  }, 100); // Small delay to ensure webview is fully rendered
 }
 
 // Create a widget DOM element
@@ -209,11 +263,21 @@ function createWidgetElement(widget) {
   const actions = document.createElement('div');
   actions.className = 'widget-actions';
 
+  // Auto-focus toggle button
+  const autoFocusBtn = document.createElement('button');
+  autoFocusBtn.className = widget.autoFocus ? 'btn-auto-focus active' : 'btn-auto-focus';
+  autoFocusBtn.textContent = widget.autoFocus ? '★ Auto' : '☆ Auto';
+  autoFocusBtn.title = widget.autoFocus ? 'Auto-focus enabled' : 'Enable auto-focus on tab open';
+  autoFocusBtn.onclick = async () => {
+    await toggleAutoFocus(widget.id);
+  };
+
   const removeBtn = document.createElement('button');
   removeBtn.className = 'btn-danger';
   removeBtn.textContent = 'Remove';
   removeBtn.onclick = () => removeWidget(widget.id);
 
+  actions.appendChild(autoFocusBtn);
   actions.appendChild(removeBtn);
 
   header.appendChild(titleContainer);
@@ -225,18 +289,14 @@ function createWidgetElement(widget) {
   const widthPercent = typeof widget.width === 'number' ? widget.width : 100;
   const heightPercent = typeof widget.height === 'number' ? widget.height : 100;
 
-  // Set width using calc to account for gaps between widgets
-  // Gap is 20px, so we need to subtract proportionally
-  if (widthPercent === 100) {
-    widgetDiv.style.width = '100%';
-  } else {
-    widgetDiv.style.width = `calc(${widthPercent}% - ${20 * (1 - widthPercent / 100)}px)`;
-  }
-  widgetDiv.style.minWidth = '200px'; // Minimum width to prevent too small widgets
-  widgetDiv.style.flexShrink = '0'; // Prevent shrinking when wrapping
+  // Calculate grid spans (10 columns, each 10% wide)
+  const columnSpan = Math.round(widthPercent / 10);
+  // Calculate row spans (each row is 10vh)
+  const rowSpan = Math.round(heightPercent / 10);
 
-  // Set height - subtract body padding (40px), header (~70px), and gap (20px) = 130px
-  widgetDiv.style.height = `calc(${heightPercent}vh - 130px)`;
+  // Apply grid positioning
+  widgetDiv.style.gridColumn = `span ${columnSpan}`;
+  widgetDiv.style.gridRow = `span ${rowSpan}`;
 
   // Create resize controls container
   const resizeControls = document.createElement('div');
@@ -278,16 +338,19 @@ function createWidgetElement(widget) {
   widthSelector.addEventListener('change', async (e) => {
     const newWidthPercent = parseInt(e.target.value);
 
-    // Apply new width accounting for gaps
-    if (newWidthPercent === 100) {
-      widgetDiv.style.width = '100%';
-    } else {
-      widgetDiv.style.width = `calc(${newWidthPercent}% - ${20 * (1 - newWidthPercent / 100)}px)`;
-    }
+    // Calculate and apply new grid column span
+    const newColumnSpan = Math.round(newWidthPercent / 10);
+    widgetDiv.style.gridColumn = `span ${newColumnSpan}`;
     widgetDiv.dataset.widthPercent = newWidthPercent;
 
+    // Update full-width class
+    if (newWidthPercent === 100) {
+      widgetDiv.classList.add('widget-full-width');
+    } else {
+      widgetDiv.classList.remove('widget-full-width');
+    }
+
     // Save to storage
-    const currentHeightPercent = parseInt(widgetDiv.dataset.heightPercent);
     const currentTab = tabs.find(t => t.id === currentTabId);
     if (currentTab) {
       const widgetInTab = currentTab.widgets.find(w => w.id === widget.id);
@@ -303,12 +366,19 @@ function createWidgetElement(widget) {
   heightSelector.addEventListener('change', async (e) => {
     const newHeightPercent = parseInt(e.target.value);
 
-    // Apply new height to the widget container (subtract 130px for header, padding, gaps)
-    widgetDiv.style.height = `calc(${newHeightPercent}vh - 130px)`;
+    // Calculate and apply new grid row span
+    const newRowSpan = Math.round(newHeightPercent / 10);
+    widgetDiv.style.gridRow = `span ${newRowSpan}`;
     widgetDiv.dataset.heightPercent = newHeightPercent;
 
+    // Update full-height class
+    if (newHeightPercent === 100) {
+      widgetDiv.classList.add('widget-full-height');
+    } else {
+      widgetDiv.classList.remove('widget-full-height');
+    }
+
     // Save to storage
-    const currentWidthPercent = parseInt(widgetDiv.dataset.widthPercent);
     const currentTab = tabs.find(t => t.id === currentTabId);
     if (currentTab) {
       const widgetInTab = currentTab.widgets.find(w => w.id === widget.id);
@@ -402,6 +472,19 @@ async function removeTab(tabId) {
   const tabIndex = tabs.findIndex(t => t.id === tabId);
   if (tabIndex === -1) return;
 
+  const tabToRemove = tabs[tabIndex];
+
+  // Remove all widget DOM elements for this tab
+  if (tabToRemove.widgets) {
+    tabToRemove.widgets.forEach(widget => {
+      const widgetElement = document.querySelector(`[data-widget-id="${widget.id}"]`);
+      if (widgetElement) {
+        widgetElement.remove();
+      }
+    });
+  }
+
+  // Remove tab from data
   tabs.splice(tabIndex, 1);
 
   // Switch to another tab
@@ -457,7 +540,8 @@ async function addWidget(name, url, width, height) {
       name,
       url,
       width: widthPercent,
-      height: heightPercent
+      height: heightPercent,
+      autoFocus: false
     };
 
     currentTab.widgets.push(newWidget);
@@ -481,19 +565,83 @@ async function removeWidget(widgetId) {
     const currentTab = tabs.find(t => t.id === currentTabId);
     if (!currentTab) return;
 
+    // Remove from data
     currentTab.widgets = currentTab.widgets.filter(w => w.id !== widgetId);
 
+    // Remove DOM element
+    const widgetElement = document.querySelector(`[data-widget-id="${widgetId}"]`);
+    if (widgetElement) {
+      widgetElement.remove();
+    }
+
     await saveTabs();
-    renderWidgets();
+    renderWidgets(); // To update empty state if needed
   } catch (error) {
     console.error('Error removing widget:', error);
     alert('Failed to remove widget');
   }
 }
 
+// Toggle auto-focus for a widget
+async function toggleAutoFocus(widgetId) {
+  try {
+    const currentTab = tabs.find(t => t.id === currentTabId);
+    if (!currentTab) return;
+
+    const widget = currentTab.widgets.find(w => w.id === widgetId);
+    if (!widget) return;
+
+    // If enabling auto-focus, disable it for all other widgets in this tab
+    if (!widget.autoFocus) {
+      currentTab.widgets.forEach(w => {
+        w.autoFocus = false;
+
+        // Update UI for all other widgets
+        const otherWidgetElement = document.querySelector(`[data-widget-id="${w.id}"]`);
+        if (otherWidgetElement) {
+          const otherBtn = otherWidgetElement.querySelector('.btn-auto-focus');
+          if (otherBtn) {
+            otherBtn.className = 'btn-auto-focus';
+            otherBtn.textContent = '☆ Auto';
+            otherBtn.title = 'Enable auto-focus on tab open';
+          }
+        }
+      });
+    }
+
+    // Toggle this widget's auto-focus
+    widget.autoFocus = !widget.autoFocus;
+
+    // Update UI for this widget
+    const widgetElement = document.querySelector(`[data-widget-id="${widgetId}"]`);
+    if (widgetElement) {
+      const btn = widgetElement.querySelector('.btn-auto-focus');
+      if (btn) {
+        if (widget.autoFocus) {
+          btn.className = 'btn-auto-focus active';
+          btn.textContent = '★ Auto';
+          btn.title = 'Auto-focus enabled';
+        } else {
+          btn.className = 'btn-auto-focus';
+          btn.textContent = '☆ Auto';
+          btn.title = 'Enable auto-focus on tab open';
+        }
+      }
+    }
+
+    await saveTabs();
+    console.log(`Widget ${widgetId} auto-focus: ${widget.autoFocus}`);
+  } catch (error) {
+    console.error('Error toggling auto-focus:', error);
+    alert('Failed to toggle auto-focus');
+  }
+}
+
 // Show modal
 function showModal() {
   modalOverlay.classList.remove('hidden');
+  // Notify main process that modal is open
+  window.electronAPI.setModalState(true);
   // Focus on first input field
   document.getElementById('widget-name').focus();
 }
@@ -502,6 +650,8 @@ function showModal() {
 function hideModal() {
   modalOverlay.classList.add('hidden');
   addWidgetForm.reset();
+  // Notify main process that modal is closed
+  window.electronAPI.setModalState(false);
 }
 
 // Truncate URL for display
@@ -544,26 +694,16 @@ function setupEventListeners() {
     }
   });
 
-  // Tab navigation with arrow keys
+  // Tab navigation with Ctrl+Tab (fallback for when webview doesn't have focus)
   document.addEventListener('keydown', (e) => {
-    // Don't navigate if modal is open or typing in an input
+    // Don't navigate if modal is open
     if (!modalOverlay.classList.contains('hidden')) return;
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-    const currentIndex = tabs.findIndex(t => t.id === currentTabId);
-
-    if (e.key === 'ArrowLeft' && currentIndex > 0) {
-      // Navigate to previous tab
+    if (e.key === 'Tab' && e.ctrlKey) {
       e.preventDefault();
-      switchTab(tabs[currentIndex - 1].id);
-      scrollTabIntoView(tabs[currentIndex - 1].id);
-    } else if (e.key === 'ArrowRight' && currentIndex < tabs.length - 1) {
-      // Navigate to next tab
-      e.preventDefault();
-      switchTab(tabs[currentIndex + 1].id);
-      scrollTabIntoView(tabs[currentIndex + 1].id);
+      switchToNextTab();
     }
-  });
+  }, true); // Use capture phase to catch the event before it reaches webviews
 
   // Add widget form submission
   addWidgetForm.addEventListener('submit', (e) => {

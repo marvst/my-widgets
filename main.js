@@ -4,6 +4,7 @@ const fs = require('fs').promises;
 
 let mainWindow;
 let tray = null;
+let isModalOpen = false;
 const STORAGE_PATH = path.join(app.getPath('userData'), 'tabs.json');
 
 function createWindow() {
@@ -46,7 +47,7 @@ function createWindow() {
   // Open DevTools in development
   // mainWindow.webContents.openDevTools();
 
-  // Handle ESC key to close
+  // Handle ESC key to hide window
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.key === 'Escape' && input.type === 'keyDown') {
       mainWindow.hide();
@@ -138,6 +139,17 @@ app.whenReady().then(() => {
     console.log('Global shortcut registration failed');
   }
 
+  // Register global shortcut for tab switching (Ctrl+Tab)
+  const tabSwitchRet = globalShortcut.register('CommandOrControl+Tab', () => {
+    if (mainWindow && mainWindow.isVisible()) {
+      mainWindow.webContents.send('switch-next-tab');
+    }
+  });
+
+  if (!tabSwitchRet) {
+    console.log('Ctrl+Tab shortcut registration failed');
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -178,4 +190,10 @@ ipcMain.handle('save-tabs', async (event, data) => {
     console.error('Error saving tabs:', error);
     return { success: false, error: error.message };
   }
+});
+
+// IPC handler for modal state
+ipcMain.on('set-modal-state', (event, isOpen) => {
+  isModalOpen = isOpen;
+  console.log('Modal state updated:', isModalOpen ? 'open' : 'closed');
 });

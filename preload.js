@@ -5,5 +5,7 @@ const { contextBridge, ipcRenderer, shell } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   getTabs: () => ipcRenderer.invoke('get-tabs'),
   saveTabs: (data) => ipcRenderer.invoke('save-tabs', data),
-  openExternal: (url) => shell.openExternal(url)
+  openExternal: (url) => shell.openExternal(url),
+  onSwitchNextTab: (callback) => ipcRenderer.on('switch-next-tab', callback),
+  setModalState: (isOpen) => ipcRenderer.send('set-modal-state', isOpen)
 });

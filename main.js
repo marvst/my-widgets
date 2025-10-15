@@ -50,7 +50,9 @@ function createWindow() {
   // Handle ESC key to hide window
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.key === 'Escape' && input.type === 'keyDown') {
-      mainWindow.hide();
+      fadeOutWindow(() => {
+        mainWindow.hide();
+      });
     }
   });
 
@@ -58,7 +60,9 @@ function createWindow() {
   mainWindow.on('close', (event) => {
     if (!app.isQuitting) {
       event.preventDefault();
-      mainWindow.hide();
+      fadeOutWindow(() => {
+        mainWindow.hide();
+      });
     }
   });
 
@@ -90,11 +94,35 @@ function fadeInWindow() {
   }, interval);
 }
 
+// Fade out animation for window
+function fadeOutWindow(callback) {
+  if (!mainWindow) return;
+
+  const steps = 20; // Number of animation steps
+  const duration = 150; // Total duration in ms
+  const interval = duration / steps;
+  let currentStep = steps;
+
+  const fadeInterval = setInterval(() => {
+    currentStep--;
+    const opacity = currentStep / steps;
+    mainWindow.setOpacity(opacity);
+
+    if (currentStep <= 0) {
+      clearInterval(fadeInterval);
+      mainWindow.setOpacity(0);
+      if (callback) callback();
+    }
+  }, interval);
+}
+
 // Toggle window visibility
 function toggleWindow() {
   if (mainWindow) {
     if (mainWindow.isVisible()) {
-      mainWindow.hide();
+      fadeOutWindow(() => {
+        mainWindow.hide();
+      });
     } else {
       // Move window to the screen where the cursor is currently located
       const cursorPoint = screen.getCursorScreenPoint();

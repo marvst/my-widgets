@@ -1,7 +1,7 @@
 {
   "name": "overlay",
   "version": "1.0.0",
-  "description": "Electron overlay app with website widgets",
+  "description": "An overlay you can add websites as widgets.",
   "main": "main.js",
   "scripts": {
     "start": "npx electron .",

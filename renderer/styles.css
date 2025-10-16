@@ -113,8 +113,8 @@ button, input, form, .widgets-container, .widget, .add-widget-panel {
 }
 
 .tab.active {
-  background: #4a7fbf;
-  border-color: #5a8fcf;
+  background: #00a1ff;
+  border-color: #00a1ff;
   color: #ffffff;
 }
 
@@ -170,12 +170,12 @@ button {
 }
 
 .btn-primary {
-  background: #4a9eff;
+  background: #00a1ff;
   color: white;
 }
 
 .btn-primary:hover {
-  background: #3a8eef;
+  background: #0091ef;
   transform: translateY(-1px);
 }
 
@@ -350,7 +350,7 @@ button {
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #4a9eff;
+  border-color: #00a1ff;
 }
 
 .form-group input:disabled {
@@ -514,7 +514,7 @@ button {
 }
 
 .size-selector {
-  background: #4a9eff;
+  background: #00a1ff;
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 5px;
@@ -531,9 +531,9 @@ button {
 }
 
 .size-selector:hover {
-  background: #3a8eef;
+  background: #0091ef;
   border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 2px 8px rgba(74, 158, 255, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 161, 255, 0.4);
 }
 
 .size-selector:active {

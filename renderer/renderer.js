@@ -427,11 +427,34 @@ function createWidgetElement(widget) {
     }
   });
 
+  // Track if initial load is complete
+  let isInitialLoad = true;
+
   // Handle new window requests (popups)
   webview.addEventListener('new-window', (event) => {
+    event.preventDefault();
     console.log('New window requested:', event.url);
     // Open in external browser
     window.electronAPI.openExternal(event.url);
+  });
+
+  webview.addEventListener('did-finish-load', () => {
+    // Mark initial load as complete after first successful load
+    if (isInitialLoad) {
+      isInitialLoad = false;
+      console.log('Initial widget load complete:', widget.url);
+    }
+  });
+
+  // Handle regular link clicks (navigation away from original URL)
+  webview.addEventListener('will-navigate', (event) => {
+    // Allow the initial page load, but intercept any subsequent navigations
+    if (!isInitialLoad && event.url !== widget.url) {
+      event.preventDefault();
+      console.log('Navigation intercepted, opening in browser:', event.url);
+      // Open in external browser
+      window.electronAPI.openExternal(event.url);
+    }
   });
 
   content.appendChild(webview);

@@ -1,11 +1,11 @@
-const { contextBridge, ipcRenderer, shell } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
   getTabs: () => ipcRenderer.invoke('get-tabs'),
   saveTabs: (data) => ipcRenderer.invoke('save-tabs', data),
-  openExternal: (url) => shell.openExternal(url),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
   onSwitchNextTab: (callback) => ipcRenderer.on('switch-next-tab', callback),
   setModalState: (isOpen) => ipcRenderer.send('set-modal-state', isOpen)
 });

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, screen, Tray, Menu } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, screen, Tray, Menu, shell } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 
@@ -36,6 +36,37 @@ function createWindow() {
   mainWindow.setBounds({ x, y, width, height });
 
   mainWindow.loadFile('renderer/index.html');
+
+  // Intercept all new window requests and open in external browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    console.log('Window open handler - opening in browser:', url);
+    shell.openExternal(url);
+    return { action: 'deny' }; // Prevent window from opening in Electron
+  });
+
+  // Handle webview new-window events
+  mainWindow.webContents.on('did-attach-webview', (event, webContents) => {
+    console.log('Webview attached');
+
+    // Intercept navigation in webviews
+    webContents.setWindowOpenHandler(({ url }) => {
+      console.log('Webview window open - opening in browser:', url);
+      shell.openExternal(url);
+      return { action: 'deny' };
+    });
+
+    // Handle navigation attempts
+    webContents.on('will-navigate', (event, url) => {
+      // Get the webview's current URL
+      const currentUrl = webContents.getURL();
+      // Only intercept if navigating away from the current page
+      if (url !== currentUrl) {
+        console.log('Webview navigation intercepted - opening in browser:', url);
+        event.preventDefault();
+        shell.openExternal(url);
+      }
+    });
+  });
 
   // Show window only after content is loaded
   mainWindow.once('ready-to-show', () => {
@@ -250,4 +281,16 @@ ipcMain.handle('save-tabs', async (event, data) => {
 ipcMain.on('set-modal-state', (event, isOpen) => {
   isModalOpen = isOpen;
   console.log('Modal state updated:', isModalOpen ? 'open' : 'closed');
+});
+
+// IPC handler for opening external URLs in system browser
+ipcMain.handle('open-external', async (event, url) => {
+  try {
+    console.log('Opening external URL:', url);
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error('Error opening external URL:', error);
+    return { success: false, error: error.message };
+  }
 });

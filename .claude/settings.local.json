@@ -15,7 +15,11 @@
       "Bash(git remote add:*)",
       "Bash(git push:*)",
       "Bash(git remote set-url:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npm start)",
+      "Bash(cat:*)",
+      "Bash(npm run build:portable:*)",
+      "Bash(reg query \"HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\")"
     ],
     "deny": [],
     "ask": []

@@ -1,11 +1,13 @@
 const { app, BrowserWindow, globalShortcut, ipcMain, screen, Tray, Menu, shell } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
+const AutoLaunch = require('auto-launch');
 
 let mainWindow;
 let tray = null;
 let isModalOpen = false;
-const STORAGE_PATH = path.join(app.getPath('userData'), 'tabs.json');
+let STORAGE_PATH;
+let autoLauncher;
 
 function createWindow() {
   // Get the display where the cursor is currently located
@@ -202,7 +204,7 @@ function createTray() {
     }
   ]);
 
-  tray.setToolTip('Overlay Widgets');
+  tray.setToolTip('Overlay Deck');
   tray.setContextMenu(contextMenu);
 
   // Double click to toggle window
@@ -212,6 +214,13 @@ function createTray() {
 }
 
 app.whenReady().then(() => {
+  // Initialize paths and auto-launcher after app is ready
+  STORAGE_PATH = path.join(app.getPath('userData'), 'tabs.json');
+  autoLauncher = new AutoLaunch({
+    name: 'Overlay Deck',
+    path: app.getPath('exe'),
+  });
+
   createWindow();
   createTray();
 
@@ -291,6 +300,31 @@ ipcMain.handle('open-external', async (event, url) => {
     return { success: true };
   } catch (error) {
     console.error('Error opening external URL:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handlers for auto-launch
+ipcMain.handle('get-auto-launch-status', async () => {
+  try {
+    const isEnabled = await autoLauncher.isEnabled();
+    return { success: true, enabled: isEnabled };
+  } catch (error) {
+    console.error('Error checking auto-launch status:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('set-auto-launch', async (event, enabled) => {
+  try {
+    if (enabled) {
+      await autoLauncher.enable();
+    } else {
+      await autoLauncher.disable();
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Error setting auto-launch:', error);
     return { success: false, error: error.message };
   }
 });

@@ -7,5 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveTabs: (data) => ipcRenderer.invoke('save-tabs', data),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   onSwitchNextTab: (callback) => ipcRenderer.on('switch-next-tab', callback),
-  setModalState: (isOpen) => ipcRenderer.send('set-modal-state', isOpen)
+  setModalState: (isOpen) => ipcRenderer.send('set-modal-state', isOpen),
+  getAutoLaunchStatus: () => ipcRenderer.invoke('get-auto-launch-status'),
+  setAutoLaunch: (enabled) => ipcRenderer.invoke('set-auto-launch', enabled)
 });

@@ -20,13 +20,14 @@
     <div class="controls">
       <button id="toggle-add-panel" class="btn-primary">+ Add Widget</button>
       <button id="add-tab-btn" class="btn-secondary">+ Add Tab</button>
+      <button id="settings-btn" class="btn-secondary">Settings</button>
     </div>
   </div>
 
   <!-- Modal Overlay -->
   <div id="modal-overlay" class="modal-overlay hidden">
     <!-- Add Widget Modal -->
-    <div id="add-widget-modal" class="modal">
+    <div id="add-widget-modal" class="modal hidden">
       <div class="modal-header">
         <h2>Add New Widget</h2>
         <button type="button" id="close-modal" class="btn-close">&times;</button>
@@ -77,6 +78,26 @@
           <button type="button" id="cancel-add" class="btn-secondary">Cancel</button>
         </div>
       </form>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button type="button" id="close-settings-modal" class="btn-close">&times;</button>
+      </div>
+      <div class="settings-content">
+        <div class="setting-item">
+          <label for="auto-launch-toggle" class="setting-label">
+            <span>Start with Windows</span>
+            <small>Launch Overlay Deck automatically when your computer starts</small>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="auto-launch-toggle">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
     </div>
   </div>
 

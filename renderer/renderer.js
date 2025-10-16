@@ -13,6 +13,10 @@ const closeModalBtn = document.getElementById('close-modal');
 const cancelAddBtn = document.getElementById('cancel-add');
 const tabsList = document.getElementById('tabs-list');
 const addTabBtn = document.getElementById('add-tab-btn');
+const settingsBtn = document.getElementById('settings-btn');
+const settingsModal = document.getElementById('settings-modal');
+const closeSettingsModalBtn = document.getElementById('close-settings-modal');
+const autoLaunchToggle = document.getElementById('auto-launch-toggle');
 
 // Initialize
 async function init() {
@@ -662,6 +666,8 @@ async function toggleAutoFocus(widgetId) {
 
 // Show modal
 function showModal() {
+  addWidgetModal.classList.remove('hidden');
+  settingsModal.classList.add('hidden');
   modalOverlay.classList.remove('hidden');
   // Notify main process that modal is open
   window.electronAPI.setModalState(true);
@@ -672,9 +678,59 @@ function showModal() {
 // Hide modal
 function hideModal() {
   modalOverlay.classList.add('hidden');
+  addWidgetModal.classList.add('hidden');
+  settingsModal.classList.add('hidden');
   addWidgetForm.reset();
   // Notify main process that modal is closed
   window.electronAPI.setModalState(false);
+}
+
+// Show settings modal
+async function showSettingsModal() {
+  addWidgetModal.classList.add('hidden');
+  settingsModal.classList.remove('hidden');
+  modalOverlay.classList.remove('hidden');
+  window.electronAPI.setModalState(true);
+
+  // Load current auto-launch status
+  await loadAutoLaunchStatus();
+}
+
+// Hide settings modal
+function hideSettingsModal() {
+  settingsModal.classList.add('hidden');
+  modalOverlay.classList.add('hidden');
+  window.electronAPI.setModalState(false);
+}
+
+// Load auto-launch status
+async function loadAutoLaunchStatus() {
+  try {
+    const result = await window.electronAPI.getAutoLaunchStatus();
+    if (result.success) {
+      autoLaunchToggle.checked = result.enabled;
+    }
+  } catch (error) {
+    console.error('Error loading auto-launch status:', error);
+  }
+}
+
+// Toggle auto-launch
+async function toggleAutoLaunch() {
+  try {
+    const enabled = autoLaunchToggle.checked;
+    const result = await window.electronAPI.setAutoLaunch(enabled);
+    if (result.success) {
+      console.log(`Auto-launch ${enabled ? 'enabled' : 'disabled'}`);
+    } else {
+      console.error('Failed to set auto-launch:', result.error);
+      // Revert toggle on error
+      autoLaunchToggle.checked = !enabled;
+    }
+  } catch (error) {
+    console.error('Error toggling auto-launch:', error);
+    autoLaunchToggle.checked = !autoLaunchToggle.checked;
+  }
 }
 
 // Truncate URL for display
@@ -703,17 +759,34 @@ function setupEventListeners() {
   // Close modal - cancel button
   cancelAddBtn.addEventListener('click', hideModal);
 
+  // Settings button
+  settingsBtn.addEventListener('click', showSettingsModal);
+
+  // Close settings modal
+  closeSettingsModalBtn.addEventListener('click', hideSettingsModal);
+
+  // Auto-launch toggle
+  autoLaunchToggle.addEventListener('change', toggleAutoLaunch);
+
   // Close modal - click outside
   modalOverlay.addEventListener('click', (e) => {
     if (e.target === modalOverlay) {
-      hideModal();
+      if (!settingsModal.classList.contains('hidden')) {
+        hideSettingsModal();
+      } else {
+        hideModal();
+      }
     }
   });
 
   // Close modal - ESC key
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !modalOverlay.classList.contains('hidden')) {
-      hideModal();
+      if (!settingsModal.classList.contains('hidden')) {
+        hideSettingsModal();
+      } else {
+        hideModal();
+      }
     }
   });
 

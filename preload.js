@@ -9,5 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onSwitchNextTab: (callback) => ipcRenderer.on('switch-next-tab', callback),
   setModalState: (isOpen) => ipcRenderer.send('set-modal-state', isOpen),
   getAutoLaunchStatus: () => ipcRenderer.invoke('get-auto-launch-status'),
-  setAutoLaunch: (enabled) => ipcRenderer.invoke('set-auto-launch', enabled)
+  setAutoLaunch: (enabled) => ipcRenderer.invoke('set-auto-launch', enabled),
+  getShortcut: () => ipcRenderer.invoke('get-shortcut'),
+  setShortcut: (shortcut) => ipcRenderer.invoke('set-shortcut', shortcut)
 });

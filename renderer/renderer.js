@@ -17,6 +17,16 @@ const settingsBtn = document.getElementById('settings-btn');
 const settingsModal = document.getElementById('settings-modal');
 const closeSettingsModalBtn = document.getElementById('close-settings-modal');
 const autoLaunchToggle = document.getElementById('auto-launch-toggle');
+const tabContextMenu = document.getElementById('tab-context-menu');
+const shortcutInput = document.getElementById('shortcut-input');
+const resetShortcutBtn = document.getElementById('reset-shortcut-btn');
+
+// Context menu state
+let contextMenuTargetTabId = null;
+
+// Shortcut recording state
+let isRecordingShortcut = false;
+let currentShortcut = 'CommandOrControl+Shift+Space';
 
 // Initialize
 async function init() {
@@ -81,9 +91,11 @@ function createTabElement(tab) {
   tabName.type = 'text';
   tabName.value = tab.name;
   tabName.readOnly = true;
+  tabName.title = 'Double-click to rename';
 
   // Double-click to edit tab name
-  tabName.addEventListener('dblclick', () => {
+  tabName.addEventListener('dblclick', (e) => {
+    e.stopPropagation(); // Prevent tab click event
     tabName.readOnly = false;
     tabName.focus();
     tabName.select();
@@ -108,12 +120,28 @@ function createTabElement(tab) {
     }
   });
 
+  // Prevent input clicks from bubbling when editing
+  tabName.addEventListener('click', (e) => {
+    if (!tabName.readOnly) {
+      e.stopPropagation();
+    }
+  });
+
   // Click to switch tab
   tabDiv.addEventListener('click', (e) => {
-    if (e.target !== tabName && !tabName.readOnly) return;
-    if (tabName.readOnly) {
-      switchTab(tab.id);
-    }
+    // Don't switch if clicking on the input while editing
+    if (e.target === tabName && !tabName.readOnly) return;
+    // Don't switch if clicking on close button
+    if (e.target.classList.contains('tab-close')) return;
+
+    switchTab(tab.id);
+  });
+
+  // Right-click context menu
+  tabDiv.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    showTabContextMenu(e.pageX, e.pageY, tab.id);
   });
 
   // Close button
@@ -692,8 +720,9 @@ async function showSettingsModal() {
   modalOverlay.classList.remove('hidden');
   window.electronAPI.setModalState(true);
 
-  // Load current auto-launch status
+  // Load current auto-launch status and shortcut
   await loadAutoLaunchStatus();
+  await loadShortcut();
 }
 
 // Hide settings modal
@@ -733,6 +762,144 @@ async function toggleAutoLaunch() {
   }
 }
 
+// Load current shortcut
+async function loadShortcut() {
+  try {
+    const shortcut = await window.electronAPI.getShortcut();
+    if (shortcut) {
+      currentShortcut = shortcut;
+      updateShortcutDisplay();
+    }
+  } catch (error) {
+    console.error('Error loading shortcut:', error);
+  }
+}
+
+// Update shortcut display
+function updateShortcutDisplay() {
+  const displayShortcut = currentShortcut.replace('CommandOrControl', 'Ctrl');
+  shortcutInput.value = displayShortcut;
+}
+
+// Start recording shortcut
+function startRecordingShortcut() {
+  isRecordingShortcut = true;
+  shortcutInput.classList.add('recording');
+  shortcutInput.value = 'Press your shortcut...';
+  shortcutInput.focus();
+}
+
+// Stop recording shortcut
+function stopRecordingShortcut() {
+  isRecordingShortcut = false;
+  shortcutInput.classList.remove('recording');
+  updateShortcutDisplay();
+}
+
+// Handle shortcut key press
+function handleShortcutKeyPress(e) {
+  if (!isRecordingShortcut) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  // Check if this is just a modifier key being pressed
+  const key = e.key;
+  if (key === 'Control' || key === 'Meta' || key === 'Alt' || key === 'Shift') {
+    // Just a modifier key, don't register yet - show preview
+    const modifiers = [];
+    if (e.ctrlKey || e.metaKey) modifiers.push('Ctrl');
+    if (e.altKey) modifiers.push('Alt');
+    if (e.shiftKey) modifiers.push('Shift');
+    shortcutInput.value = modifiers.join('+') + (modifiers.length > 0 ? '+...' : 'Press a key...');
+    return;
+  }
+
+  const keys = [];
+
+  // Add modifiers
+  if (e.ctrlKey || e.metaKey) keys.push('CommandOrControl');
+  if (e.altKey) keys.push('Alt');
+  if (e.shiftKey) keys.push('Shift');
+
+  // Add main key - we already have 'key' from above, now normalize it
+  // Normalize key names for Electron accelerators
+  let normalizedKey = key;
+
+  // Special keys that need exact Electron format
+  if (key === ' ') {
+    normalizedKey = 'Space';
+  } else if (key === 'Enter' || key === 'Return') {
+    normalizedKey = 'Enter';
+  } else if (key === 'Escape') {
+    normalizedKey = 'Esc';
+  } else if (key === 'Backspace') {
+    normalizedKey = 'Backspace';
+  } else if (key === 'Delete') {
+    normalizedKey = 'Delete';
+  } else if (key === 'Insert') {
+    normalizedKey = 'Insert';
+  } else if (key === 'Home') {
+    normalizedKey = 'Home';
+  } else if (key === 'End') {
+    normalizedKey = 'End';
+  } else if (key === 'PageUp') {
+    normalizedKey = 'PageUp';
+  } else if (key === 'PageDown') {
+    normalizedKey = 'PageDown';
+  } else if (key === 'ArrowUp') {
+    normalizedKey = 'Up';
+  } else if (key === 'ArrowDown') {
+    normalizedKey = 'Down';
+  } else if (key === 'ArrowLeft') {
+    normalizedKey = 'Left';
+  } else if (key === 'ArrowRight') {
+    normalizedKey = 'Right';
+  } else if (key === 'Tab') {
+    normalizedKey = 'Tab';
+  } else if (key.startsWith('F') && key.length <= 3 && !isNaN(key.substring(1))) {
+    // F1-F12 keys
+    normalizedKey = key;
+  } else if (key.length === 1) {
+    // Regular character keys - uppercase for consistency
+    normalizedKey = key.toUpperCase();
+  } else {
+    // Use the key as-is for other cases
+    normalizedKey = key;
+  }
+
+  keys.push(normalizedKey);
+
+  // Need at least one modifier + one key
+  if (keys.length >= 2) {
+    const newShortcut = keys.join('+');
+    setShortcut(newShortcut);
+  }
+}
+
+// Set new shortcut
+async function setShortcut(shortcut) {
+  try {
+    const result = await window.electronAPI.setShortcut(shortcut);
+    if (result.success) {
+      currentShortcut = shortcut;
+      console.log(`Shortcut set to: ${shortcut}`);
+    } else {
+      alert(`Failed to set shortcut: ${result.error || 'Unknown error'}`);
+    }
+  } catch (error) {
+    console.error('Error setting shortcut:', error);
+    alert('Failed to set shortcut');
+  } finally {
+    stopRecordingShortcut();
+  }
+}
+
+// Reset shortcut to default
+async function resetShortcut() {
+  await setShortcut('CommandOrControl+Shift+Space');
+}
+
 // Truncate URL for display
 function truncateUrl(url) {
   try {
@@ -741,6 +908,45 @@ function truncateUrl(url) {
   } catch {
     return url.substring(0, 30) + '...';
   }
+}
+
+// Show tab context menu
+function showTabContextMenu(x, y, tabId) {
+  contextMenuTargetTabId = tabId;
+  tabContextMenu.style.left = `${x}px`;
+  tabContextMenu.style.top = `${y}px`;
+  tabContextMenu.classList.remove('hidden');
+}
+
+// Hide tab context menu
+function hideTabContextMenu() {
+  tabContextMenu.classList.add('hidden');
+  contextMenuTargetTabId = null;
+}
+
+// Handle context menu actions
+function handleContextMenuAction(action) {
+  if (!contextMenuTargetTabId) return;
+
+  switch (action) {
+    case 'rename':
+      // Find the tab element and trigger rename mode
+      const tabElement = document.querySelector(`[data-tab-id="${contextMenuTargetTabId}"]`);
+      if (tabElement) {
+        const tabNameInput = tabElement.querySelector('.tab-name-editable');
+        if (tabNameInput) {
+          tabNameInput.readOnly = false;
+          tabNameInput.focus();
+          tabNameInput.select();
+        }
+      }
+      break;
+    case 'close':
+      removeTab(contextMenuTargetTabId);
+      break;
+  }
+
+  hideTabContextMenu();
 }
 
 // Setup event listeners
@@ -767,6 +973,22 @@ function setupEventListeners() {
 
   // Auto-launch toggle
   autoLaunchToggle.addEventListener('change', toggleAutoLaunch);
+
+  // Shortcut input - click to start recording
+  shortcutInput.addEventListener('click', startRecordingShortcut);
+
+  // Shortcut input - handle key press
+  shortcutInput.addEventListener('keydown', handleShortcutKeyPress);
+
+  // Shortcut input - blur to stop recording
+  shortcutInput.addEventListener('blur', () => {
+    if (isRecordingShortcut) {
+      stopRecordingShortcut();
+    }
+  });
+
+  // Reset shortcut button
+  resetShortcutBtn.addEventListener('click', resetShortcut);
 
   // Close modal - click outside
   modalOverlay.addEventListener('click', (e) => {
@@ -811,6 +1033,29 @@ function setupEventListeners() {
     const height = document.getElementById('widget-height').value;
 
     addWidget(name, url, width, height);
+  });
+
+  // Context menu item clicks
+  tabContextMenu.addEventListener('click', (e) => {
+    const menuItem = e.target.closest('.context-menu-item');
+    if (menuItem) {
+      const action = menuItem.dataset.action;
+      handleContextMenuAction(action);
+    }
+  });
+
+  // Hide context menu when clicking anywhere else
+  document.addEventListener('click', (e) => {
+    if (!tabContextMenu.contains(e.target) && !tabContextMenu.classList.contains('hidden')) {
+      hideTabContextMenu();
+    }
+  });
+
+  // Hide context menu on escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !tabContextMenu.classList.contains('hidden')) {
+      hideTabContextMenu();
+    }
   });
 }
 

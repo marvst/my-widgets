@@ -7,7 +7,9 @@ let mainWindow;
 let tray = null;
 let isModalOpen = false;
 let STORAGE_PATH;
+let SETTINGS_PATH;
 let autoLauncher;
+let currentShortcut = 'CommandOrControl+Shift+Space';
 
 function createWindow() {
   // Get the display where the cursor is currently located
@@ -25,6 +27,7 @@ function createWindow() {
     alwaysOnTop: true,
     resizable: true,
     show: false, // Don't show until ready
+    skipTaskbar: true, // Don't show in taskbar
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -36,6 +39,9 @@ function createWindow() {
 
   // Set bounds to full screen immediately before loading
   mainWindow.setBounds({ x, y, width, height });
+
+  // Enable content protection to prevent the window from being captured in screen sharing
+  mainWindow.setContentProtection(true);
 
   mainWindow.loadFile('renderer/index.html');
 
@@ -213,25 +219,23 @@ function createTray() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Initialize paths and auto-launcher after app is ready
   STORAGE_PATH = path.join(app.getPath('userData'), 'tabs.json');
+  SETTINGS_PATH = path.join(app.getPath('userData'), 'settings.json');
   autoLauncher = new AutoLaunch({
     name: 'Overlay Deck',
     path: app.getPath('exe'),
   });
 
+  // Load saved shortcut
+  await loadShortcut();
+
   createWindow();
   createTray();
 
-  // Register global shortcut to toggle overlay (Ctrl+Shift+Space)
-  const ret = globalShortcut.register('CommandOrControl+Shift+Space', () => {
-    toggleWindow();
-  });
-
-  if (!ret) {
-    console.log('Global shortcut registration failed');
-  }
+  // Register global shortcut to toggle overlay
+  registerToggleShortcut(currentShortcut);
 
   // Register global shortcut for tab switching (Ctrl+Tab)
   const tabSwitchRet = globalShortcut.register('CommandOrControl+Tab', () => {
@@ -328,3 +332,141 @@ ipcMain.handle('set-auto-launch', async (event, enabled) => {
     return { success: false, error: error.message };
   }
 });
+
+// Load shortcut from settings
+async function loadShortcut() {
+  try {
+    const data = await fs.readFile(SETTINGS_PATH, 'utf8');
+    const settings = JSON.parse(data);
+    if (settings.shortcut) {
+      currentShortcut = settings.shortcut;
+      console.log('Loaded shortcut:', currentShortcut);
+    }
+  } catch (error) {
+    // File doesn't exist or is invalid, use default
+    console.log('Using default shortcut:', currentShortcut);
+  }
+}
+
+// Save shortcut to settings
+async function saveShortcut(shortcut) {
+  try {
+    let settings = {};
+    try {
+      const data = await fs.readFile(SETTINGS_PATH, 'utf8');
+      settings = JSON.parse(data);
+    } catch (error) {
+      // File doesn't exist, use empty object
+    }
+    settings.shortcut = shortcut;
+    await fs.writeFile(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving shortcut:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Register toggle shortcut
+function registerToggleShortcut(shortcut) {
+  try {
+    // Unregister previous shortcut if exists
+    globalShortcut.unregisterAll();
+
+    console.log('Attempting to register shortcut:', shortcut);
+
+    // Register new shortcut
+    const ret = globalShortcut.register(shortcut, () => {
+      toggleWindow();
+    });
+
+    if (!ret) {
+      console.error('Global shortcut registration failed for:', shortcut);
+      return false;
+    }
+
+    // Re-register tab switching shortcut
+    const tabSwitchRet = globalShortcut.register('CommandOrControl+Tab', () => {
+      if (mainWindow && mainWindow.isVisible()) {
+        mainWindow.webContents.send('switch-next-tab');
+      }
+    });
+
+    if (!tabSwitchRet) {
+      console.log('Ctrl+Tab shortcut registration failed');
+    }
+
+    console.log('Global shortcut registered successfully:', shortcut);
+    return true;
+  } catch (error) {
+    console.error('Exception while registering shortcut:', shortcut, error);
+    throw error;
+  }
+}
+
+// IPC handlers for shortcut management
+ipcMain.handle('get-shortcut', async () => {
+  return currentShortcut;
+});
+
+ipcMain.handle('set-shortcut', async (event, shortcut) => {
+  try {
+    // Validate shortcut format
+    if (!shortcut || typeof shortcut !== 'string') {
+      return { success: false, error: 'Invalid shortcut format' };
+    }
+
+    // Try to register the new shortcut
+    const registered = registerToggleShortcut(shortcut);
+
+    if (!registered) {
+      return { success: false, error: 'Failed to register shortcut. It may be in use by another application.' };
+    }
+
+    // Save to settings
+    currentShortcut = shortcut;
+    await saveShortcut(shortcut);
+
+    // Update tray menu
+    updateTrayMenu();
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error setting shortcut:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Update tray menu with current shortcut
+function updateTrayMenu() {
+  if (!tray) return;
+
+  const displayShortcut = currentShortcut.replace('CommandOrControl', 'Ctrl');
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show Overlay',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    },
+    {
+      label: `Toggle Overlay (${displayShortcut})`,
+      click: () => {
+        toggleWindow();
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      click: () => {
+        app.isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setContextMenu(contextMenu);
+}

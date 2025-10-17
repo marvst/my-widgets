@@ -97,6 +97,17 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+
+        <div class="setting-item">
+          <label class="setting-label">
+            <span>Toggle Overlay Shortcut</span>
+            <small>Press a key combination to toggle the overlay window</small>
+          </label>
+          <div class="shortcut-input-container">
+            <input type="text" id="shortcut-input" class="shortcut-input" readonly placeholder="Click to record shortcut">
+            <button type="button" id="reset-shortcut-btn" class="btn-reset">Reset</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -111,6 +122,12 @@
     <p>No widgets yet. Click "Add Widget" to get started!</p>
     <p class="hint">Press ESC to hide this overlay</p>
     <p class="hint">Press Ctrl+Shift+Space to toggle overlay</p>
+  </div>
+
+  <!-- Tab Context Menu -->
+  <div id="tab-context-menu" class="context-menu hidden">
+    <div class="context-menu-item" data-action="rename">Rename</div>
+    <div class="context-menu-item" data-action="close">Close Tab</div>
   </div>
 
   <script src="renderer.js"></script>

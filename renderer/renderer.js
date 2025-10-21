@@ -697,10 +697,14 @@ function showModal() {
   addWidgetModal.classList.remove('hidden');
   settingsModal.classList.add('hidden');
   modalOverlay.classList.remove('hidden');
-  // Notify main process that modal is open
-  window.electronAPI.setModalState(true);
-  // Focus on first input field
-  document.getElementById('widget-name').focus();
+
+  // Wait for animation to complete before focusing
+  modalOverlay.addEventListener('animationend', () => {
+    // Notify main process that modal is open
+    window.electronAPI.setModalState(true);
+    // Focus on first input field
+    document.getElementById('widget-name').focus();
+  }, { once: true });
 }
 
 // Hide modal

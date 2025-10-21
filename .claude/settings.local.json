@@ -1,25 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm init -y)",
-      "Bash(npm install:*)",
-      "Bash(npm run build:win:*)",
-      "Bash(set CSC_IDENTITY_AUTO_DISCOVERY=false)",
-      "Bash(ls:*)",
-      "Read(//c/Users/Work/AppData/Local/electron-builder/Cache/winCodeSign//**)",
-      "Bash(npx electron-packager:*)",
-      "Bash(git init:*)",
+      "Bash(dir \"Overlay Deck 1.0.0.appx\")",
+      "Bash(mkdir -p appx_contents)",
+      "Bash(powershell -Command \"Expand-Archive -Path ''Overlay Deck 1.0.0.appx'' -DestinationPath appx_contents -Force\")",
+      "Bash(cp \"Overlay Deck 1.0.0.appx\" \"temp_package.zip\")",
+      "Bash(powershell -Command \"Expand-Archive -Path ''temp_package.zip'' -DestinationPath appx_contents -Force\")",
+      "Bash(rm temp_package.zip)",
+      "Bash(powershell -Command \"Expand-Archive -Path ''''temp.zip'''' -DestinationPath appx_contents -Force\")",
       "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git config:*)",
-      "Bash(git remote add:*)",
-      "Bash(git push:*)",
-      "Bash(git remote set-url:*)",
-      "Bash(node:*)",
-      "Bash(npm start)",
-      "Bash(cat:*)",
-      "Bash(npm run build:portable:*)",
-      "Bash(reg query \"HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\")"
+      "Bash(git rm:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd privacy policy and update project configuration\n\n- Add PRIVACY_POLICY.md with data collection and usage information\n- Remove package-lock.json (no longer needed)\n- Update Claude settings permissions\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

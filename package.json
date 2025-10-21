@@ -1,12 +1,13 @@
 {
   "name": "overlay",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "An overlay you can add websites as widgets.",
   "main": "main.js",
   "scripts": {
     "start": "npx electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
+    "build:appx": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --win appx",
     "build:portable": "electron-packager . \"Overlay Deck\" --platform=win32 --arch=x64 --out=dist --overwrite --icon=icon.png",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -24,8 +25,28 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "appx",
+          "arch": [
+            "x64"
+          ]
         }
       ]
+    },
+    "appx": {
+      "displayName": "Overlay Deck",
+      "publisher": "CN=5F7EB73A-8001-450C-A7E1-942AF51F84EC",
+      "publisherDisplayName": "marvst",
+      "identityName": "marvst.OverlayDeck",
+      "applicationId": "OverlayDeck",
+      "backgroundColor": "#1a1a25",
+      "languages": [
+        "en-US"
+      ],
+      "addAutoLaunchExtension": false,
+      "showNameOnTiles": true,
+      "setBuildNumber": false
     },
     "nsis": {
       "oneClick": false,

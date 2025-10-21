@@ -46,7 +46,7 @@ async function init() {
 
   setupEventListeners();
 
-  // Listen for global Tab key press from main process
+  // Listen for Ctrl+Tab from main process global shortcut
   window.electronAPI.onSwitchNextTab(() => {
     switchToNextTab();
   });
@@ -233,13 +233,22 @@ function renderWidgets() {
   focusAutoFocusWidget();
 }
 
+// Track last focused tab to prevent repeated auto-focus
+let lastAutoFocusedTab = null;
+
 // Focus the widget marked as auto-focus in current tab
 function focusAutoFocusWidget() {
   const currentTab = tabs.find(t => t.id === currentTabId);
   if (!currentTab) return;
 
+  // Only auto-focus once per tab switch, not on every render
+  if (lastAutoFocusedTab === currentTabId) return;
+
   const autoFocusWidget = currentTab.widgets.find(w => w.autoFocus);
-  if (!autoFocusWidget) return;
+  if (!autoFocusWidget) {
+    lastAutoFocusedTab = currentTabId;
+    return;
+  }
 
   // Find the webview for this widget and focus it
   setTimeout(() => {
@@ -249,6 +258,7 @@ function focusAutoFocusWidget() {
       if (webview) {
         webview.focus();
         console.log(`Auto-focused widget: ${autoFocusWidget.name}`);
+        lastAutoFocusedTab = currentTabId;
       }
     }
   }, 100); // Small delay to ensure webview is fully rendered
@@ -1016,16 +1026,8 @@ function setupEventListeners() {
     }
   });
 
-  // Tab navigation with Ctrl+Tab (fallback for when webview doesn't have focus)
-  document.addEventListener('keydown', (e) => {
-    // Don't navigate if modal is open
-    if (!modalOverlay.classList.contains('hidden')) return;
-
-    if (e.key === 'Tab' && e.ctrlKey) {
-      e.preventDefault();
-      switchToNextTab();
-    }
-  }, true); // Use capture phase to catch the event before it reaches webviews
+  // Note: Ctrl+Tab for tab switching is handled in main.js via before-input-event
+  // This ensures it works globally, even when webviews have focus
 
   // Add widget form submission
   addWidgetForm.addEventListener('submit', (e) => {

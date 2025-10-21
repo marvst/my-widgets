@@ -91,6 +91,7 @@ function createWindow() {
     if (input.key === 'Escape' && input.type === 'keyDown') {
       fadeOutWindow(() => {
         mainWindow.hide();
+        unregisterCtrlTabShortcut(); // Unregister when hiding via ESC
       });
     }
   });
@@ -155,12 +156,27 @@ function fadeOutWindow(callback) {
   }, interval);
 }
 
+// Register Ctrl+Tab shortcut (only when overlay is visible)
+function registerCtrlTabShortcut() {
+  globalShortcut.register('CommandOrControl+Tab', () => {
+    if (mainWindow && mainWindow.isVisible()) {
+      mainWindow.webContents.send('switch-next-tab');
+    }
+  });
+}
+
+// Unregister Ctrl+Tab shortcut (when overlay is hidden)
+function unregisterCtrlTabShortcut() {
+  globalShortcut.unregister('CommandOrControl+Tab');
+}
+
 // Toggle window visibility
 function toggleWindow() {
   if (mainWindow) {
     if (mainWindow.isVisible()) {
       fadeOutWindow(() => {
         mainWindow.hide();
+        unregisterCtrlTabShortcut(); // Unregister when hiding
       });
     } else {
       // Move window to the screen where the cursor is currently located
@@ -175,6 +191,7 @@ function toggleWindow() {
 
       // Fade in the window
       fadeInWindow();
+      registerCtrlTabShortcut(); // Register when showing
     }
   }
 }
@@ -227,17 +244,6 @@ app.whenReady().then(async () => {
 
   // Register global shortcut to toggle overlay
   registerToggleShortcut(currentShortcut);
-
-  // Register global shortcut for tab switching (Ctrl+Tab)
-  const tabSwitchRet = globalShortcut.register('CommandOrControl+Tab', () => {
-    if (mainWindow && mainWindow.isVisible()) {
-      mainWindow.webContents.send('switch-next-tab');
-    }
-  });
-
-  if (!tabSwitchRet) {
-    console.log('Ctrl+Tab shortcut registration failed');
-  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -376,15 +382,9 @@ function registerToggleShortcut(shortcut) {
       return false;
     }
 
-    // Re-register tab switching shortcut
-    const tabSwitchRet = globalShortcut.register('CommandOrControl+Tab', () => {
-      if (mainWindow && mainWindow.isVisible()) {
-        mainWindow.webContents.send('switch-next-tab');
-      }
-    });
-
-    if (!tabSwitchRet) {
-      console.log('Ctrl+Tab shortcut registration failed');
+    // Re-register Ctrl+Tab if window is visible
+    if (mainWindow && mainWindow.isVisible()) {
+      registerCtrlTabShortcut();
     }
 
     console.log('Global shortcut registered successfully:', shortcut);

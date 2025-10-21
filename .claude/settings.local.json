@@ -13,7 +13,8 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nAdd privacy policy and update project configuration\n\n- Add PRIVACY_POLICY.md with data collection and usage information\n- Remove package-lock.json (no longer needed)\n- Update Claude settings permissions\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit -m \"$(cat <<''EOF''\nFix widget popup form input focus issue\n\n- Wait for modal animation to complete before focusing input field\n- Use animationend event to ensure DOM is fully ready\n- Prevents race condition that caused form to become unresponsive\n- Fixes issue where users had to restart app to use form\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

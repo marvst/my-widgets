@@ -186,15 +186,6 @@ function createTray() {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Show Overlay',
-      click: () => {
-        if (mainWindow) {
-          mainWindow.show();
-          mainWindow.focus();
-        }
-      }
-    },
-    {
       label: 'Toggle Overlay (Ctrl+Shift+Space)',
       click: () => {
         toggleWindow();
@@ -443,15 +434,6 @@ function updateTrayMenu() {
 
   const displayShortcut = currentShortcut.replace('CommandOrControl', 'Ctrl');
   const contextMenu = Menu.buildFromTemplate([
-    {
-      label: 'Show Overlay',
-      click: () => {
-        if (mainWindow) {
-          mainWindow.show();
-          mainWindow.focus();
-        }
-      }
-    },
     {
       label: `Toggle Overlay (${displayShortcut})`,
       click: () => {

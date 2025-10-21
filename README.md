@@ -77,7 +77,6 @@ npm start
 ### System Tray
 - The app runs in the system tray (notification area) even when the overlay is hidden
 - **Right-click the tray icon** to access the menu:
-  - Show Overlay: Bring the overlay window to front
   - Toggle Overlay: Show/hide the overlay
   - Quit: Exit the application completely
 - **Double-click the tray icon** to quickly toggle the overlay

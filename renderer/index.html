@@ -74,6 +74,13 @@
             </select>
           </div>
         </div>
+        <div class="form-group">
+          <label for="widget-navigation-mode">Navigation Mode:</label>
+          <select id="widget-navigation-mode" class="form-select">
+            <option value="internal" selected>Keep all navigation within widget (browse freely)</option>
+            <option value="external">Open all navigation in browser</option>
+          </select>
+        </div>
         <div class="form-actions">
           <button type="submit" class="btn-primary">Add Widget</button>
           <button type="button" id="cancel-add" class="btn-secondary">Cancel</button>
@@ -143,6 +150,13 @@
         <div class="form-group">
           <label for="edit-widget-url">URL:</label>
           <input type="url" id="edit-widget-url" placeholder="https://example.com" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-widget-navigation-mode">Navigation Mode:</label>
+          <select id="edit-widget-navigation-mode" class="form-select">
+            <option value="internal">Keep all navigation within widget (browse freely)</option>
+            <option value="external">Open all navigation in browser</option>
+          </select>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn-primary">Save Changes</button>

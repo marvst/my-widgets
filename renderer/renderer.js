@@ -488,6 +488,8 @@ function createWidgetElement(widget) {
   webview.style.width = '100%';
   webview.style.height = '100%';
   webview.setAttribute('allowpopups', '');
+  webview.setAttribute('data-navigation-mode', widget.navigationMode || 'same-domain');
+  webview.setAttribute('data-widget-url', widget.url);
 
   // Webview event handlers
   webview.addEventListener('did-start-loading', () => {
@@ -518,9 +520,24 @@ function createWidgetElement(widget) {
   // Handle new window requests (popups)
   webview.addEventListener('new-window', (event) => {
     event.preventDefault();
-    console.log('New window requested:', event.url);
-    // Open in external browser
-    window.electronAPI.openExternal(event.url);
+    console.log('[RENDERER] New window requested:', event.url);
+    console.log('[RENDERER] Widget navigation mode:', widget.navigationMode);
+
+    // Get navigation mode (default to 'internal' for backwards compatibility)
+    // 'same-domain' is treated as 'internal' for backwards compatibility
+    const navigationMode = widget.navigationMode || 'internal';
+
+    // If mode is 'external', always open in browser
+    if (navigationMode === 'external') {
+      console.log('[RENDERER] External mode - opening in browser');
+      window.electronAPI.openExternal(event.url);
+      return;
+    }
+
+    // If mode is 'internal', navigate within widget for same-window targets
+    // but open popups externally
+    console.log('[RENDERER] Internal mode - navigating within widget');
+    webview.src = event.url;
   });
 
   webview.addEventListener('did-finish-load', () => {
@@ -531,16 +548,8 @@ function createWidgetElement(widget) {
     }
   });
 
-  // Handle regular link clicks (navigation away from original URL)
-  webview.addEventListener('will-navigate', (event) => {
-    // Allow the initial page load, but intercept any subsequent navigations
-    if (!isInitialLoad && event.url !== widget.url) {
-      event.preventDefault();
-      console.log('Navigation intercepted, opening in browser:', event.url);
-      // Open in external browser
-      window.electronAPI.openExternal(event.url);
-    }
-  });
+  // Note: Navigation handling (will-navigate) is done in main.js
+  // The main process has full control over navigation based on widget settings
 
   // Update navigation buttons when webview navigates
   webview.addEventListener('did-navigate', () => {
@@ -654,7 +663,7 @@ async function saveTabs() {
 }
 
 // Add new widget to current tab
-async function addWidget(name, url, width, height) {
+async function addWidget(name, url, width, height, navigationMode = 'same-domain') {
   try {
     const currentTab = tabs.find(t => t.id === currentTabId);
     if (!currentTab) {
@@ -677,7 +686,8 @@ async function addWidget(name, url, width, height) {
       url,
       width: widthPercent,
       height: heightPercent,
-      autoFocus: false
+      autoFocus: false,
+      navigationMode: navigationMode || 'same-domain'
     };
 
     currentTab.widgets.push(newWidget);
@@ -786,6 +796,7 @@ function showEditWidgetModal(widgetId) {
   // Pre-fill form with current widget data
   document.getElementById('edit-widget-name').value = widget.name;
   document.getElementById('edit-widget-url').value = widget.url;
+  document.getElementById('edit-widget-navigation-mode').value = widget.navigationMode || 'same-domain';
 
   // Show modal
   addWidgetModal.classList.add('hidden');
@@ -810,7 +821,7 @@ function hideEditWidgetModal() {
 }
 
 // Update widget details
-async function updateWidget(widgetId, newName, newUrl) {
+async function updateWidget(widgetId, newName, newUrl, navigationMode) {
   try {
     const currentTab = tabs.find(t => t.id === currentTabId);
     if (!currentTab) return;
@@ -826,6 +837,7 @@ async function updateWidget(widgetId, newName, newUrl) {
     // Update widget data
     widget.name = newName;
     widget.url = newUrl;
+    widget.navigationMode = navigationMode || widget.navigationMode || 'same-domain';
 
     // Save to storage
     await saveTabs();
@@ -849,8 +861,21 @@ async function updateWidget(widgetId, newName, newUrl) {
 
       // Update webview
       const webview = widgetElement.querySelector('webview');
-      if (webview && webview.src !== newUrl) {
-        webview.src = newUrl;
+      if (webview) {
+        // Update navigation mode attribute
+        webview.setAttribute('data-navigation-mode', navigationMode);
+        webview.setAttribute('data-widget-url', newUrl);
+
+        // Notify main process to update cached navigation mode
+        const webContentsId = webview.getWebContentsId();
+        if (webContentsId) {
+          window.electronAPI.updateWebviewNavigationMode(webContentsId, navigationMode, newUrl);
+        }
+
+        // Update URL if it changed
+        if (webview.src !== newUrl) {
+          webview.src = newUrl;
+        }
       }
     }
 
@@ -1235,9 +1260,10 @@ function setupEventListeners() {
 
     const name = document.getElementById('edit-widget-name').value;
     const url = document.getElementById('edit-widget-url').value;
+    const navigationMode = document.getElementById('edit-widget-navigation-mode').value;
 
     if (editingWidgetId) {
-      updateWidget(editingWidgetId, name, url);
+      updateWidget(editingWidgetId, name, url, navigationMode);
     }
   });
 
@@ -1284,8 +1310,9 @@ function setupEventListeners() {
     const url = document.getElementById('widget-url').value;
     const width = document.getElementById('widget-width').value;
     const height = document.getElementById('widget-height').value;
+    const navigationMode = document.getElementById('widget-navigation-mode').value;
 
-    addWidget(name, url, width, height);
+    addWidget(name, url, width, height, navigationMode);
   });
 
   // Context menu item clicks

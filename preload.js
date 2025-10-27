@@ -13,5 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getShortcut: () => ipcRenderer.invoke('get-shortcut'),
   setShortcut: (shortcut) => ipcRenderer.invoke('set-shortcut', shortcut),
   backupConfig: () => ipcRenderer.invoke('backup-config'),
-  restoreConfig: () => ipcRenderer.invoke('restore-config')
+  restoreConfig: () => ipcRenderer.invoke('restore-config'),
+  updateWebviewNavigationMode: (webContentsId, navigationMode, widgetUrl) =>
+    ipcRenderer.send('update-webview-navigation-mode', webContentsId, navigationMode, widgetUrl)
 });

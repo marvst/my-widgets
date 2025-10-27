@@ -7,6 +7,8 @@ let mainWindow;
 let tray = null;
 let isModalOpen = false;
 let STORAGE_PATH;
+// Store navigation mode for each webview by webContentsId
+const webviewNavigationModes = new Map();
 let SETTINGS_PATH;
 let autoLauncher;
 let currentShortcut = 'CommandOrControl+Shift+Space';
@@ -56,23 +58,90 @@ function createWindow() {
   mainWindow.webContents.on('did-attach-webview', (event, webContents) => {
     console.log('Webview attached');
 
+    // Get webview element attributes and store them
+    mainWindow.webContents.executeJavaScript(`
+      (() => {
+        const webviews = document.querySelectorAll('webview');
+        for (const wv of webviews) {
+          if (wv.getWebContentsId && wv.getWebContentsId() === ${webContents.id}) {
+            return {
+              navigationMode: wv.getAttribute('data-navigation-mode') || 'same-domain',
+              widgetUrl: wv.getAttribute('data-widget-url') || wv.src
+            };
+          }
+        }
+        return { navigationMode: 'same-domain', widgetUrl: '' };
+      })();
+    `).then(result => {
+      webviewNavigationModes.set(webContents.id, result);
+      console.log(`Webview ${webContents.id} navigation mode: ${result.navigationMode}, URL: ${result.widgetUrl}`);
+    }).catch(err => {
+      console.error('Failed to get webview attributes:', err);
+      webviewNavigationModes.set(webContents.id, { navigationMode: 'same-domain', widgetUrl: '' });
+    });
+
     // Intercept navigation in webviews
     webContents.setWindowOpenHandler(({ url }) => {
-      console.log('Webview window open - opening in browser:', url);
+      console.log('[MAIN] setWindowOpenHandler - opening in browser:', url);
       shell.openExternal(url);
       return { action: 'deny' };
     });
 
+    // Track if this is the first navigation (initial page load)
+    let isInitialLoad = true;
+
     // Handle navigation attempts
     webContents.on('will-navigate', (event, url) => {
-      // Get the webview's current URL
-      const currentUrl = webContents.getURL();
-      // Only intercept if navigating away from the current page
-      if (url !== currentUrl) {
-        console.log('Webview navigation intercepted - opening in browser:', url);
-        event.preventDefault();
-        shell.openExternal(url);
+      console.log('[MAIN] will-navigate event fired:', url);
+
+      // Allow the initial page load without any checks
+      if (isInitialLoad) {
+        isInitialLoad = false;
+        console.log('[MAIN] Initial load allowed:', url);
+        return;
       }
+
+      // Get stored navigation mode
+      const config = webviewNavigationModes.get(webContents.id) || { navigationMode: 'internal', widgetUrl: '' };
+      let { navigationMode } = config;
+
+      // Treat 'same-domain' as 'internal' for backwards compatibility
+      if (navigationMode === 'same-domain') {
+        navigationMode = 'internal';
+      }
+
+      console.log(`[MAIN] Navigation mode: ${navigationMode}`);
+
+      // If mode is 'external', open all navigation in browser
+      if (navigationMode === 'external') {
+        console.log('[MAIN] External mode - PREVENTING navigation and opening in browser:', url);
+        event.preventDefault();
+        // Open in external browser
+        shell.openExternal(url);
+        // Also try to reload the original page to keep widget locked
+        const originalUrl = config.widgetUrl;
+        if (originalUrl) {
+          console.log('[MAIN] Reloading widget to original URL:', originalUrl);
+          // Small delay to ensure preventDefault takes effect first
+          setTimeout(() => {
+            try {
+              webContents.loadURL(originalUrl);
+            } catch (err) {
+              console.error('[MAIN] Failed to reload original URL:', err);
+            }
+          }, 100);
+        }
+        return;
+      }
+
+      // If mode is 'internal' (or 'same-domain' for backwards compat), allow all navigation in widget
+      console.log('[MAIN] Internal mode - navigation ALLOWED within widget');
+      // Don't preventDefault - let the navigation proceed normally
+    });
+
+    // Clean up when webContents is destroyed
+    webContents.on('destroyed', () => {
+      webviewNavigationModes.delete(webContents.id);
     });
 
     // Forward keyboard shortcuts from webview to main window
@@ -313,6 +382,12 @@ ipcMain.handle('save-tabs', async (event, data) => {
 ipcMain.on('set-modal-state', (event, isOpen) => {
   isModalOpen = isOpen;
   console.log('Modal state updated:', isModalOpen ? 'open' : 'closed');
+});
+
+// IPC handler for updating webview navigation mode
+ipcMain.on('update-webview-navigation-mode', (event, webContentsId, navigationMode, widgetUrl) => {
+  console.log(`[MAIN] Updating navigation mode for webview ${webContentsId} to ${navigationMode}`);
+  webviewNavigationModes.set(webContentsId, { navigationMode, widgetUrl });
 });
 
 // IPC handler for opening external URLs in system browser

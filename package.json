@@ -1,6 +1,6 @@
 {
   "name": "overlay",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "An overlay you can add websites as widgets.",
   "main": "main.js",
   "scripts": {

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, screen, Tray, Menu, shell } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, screen, Tray, Menu, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const AutoLaunch = require('auto-launch');
@@ -74,6 +74,26 @@ function createWindow() {
         shell.openExternal(url);
       }
     });
+
+    // Forward keyboard shortcuts from webview to main window
+    webContents.on('before-input-event', (event, input) => {
+      // Forward Ctrl+Shift+Space to toggle overlay
+      if (input.type === 'keyDown' &&
+          input.key === ' ' &&
+          input.shift &&
+          (input.control || input.meta)) {
+        event.preventDefault();
+        fadeOutWindow(() => {
+          mainWindow.hide();
+        });
+      }
+
+      // Forward Ctrl+Tab to switch tabs
+      if (input.type === 'keyDown' && input.key === 'Tab' && (input.control || input.meta)) {
+        event.preventDefault();
+        mainWindow.webContents.send('switch-next-tab');
+      }
+    });
   });
 
   // Show window only after content is loaded
@@ -86,12 +106,30 @@ function createWindow() {
   // Open DevTools in development
   // mainWindow.webContents.openDevTools();
 
-  // Handle ESC key to hide window
+  // Handle keyboard shortcuts
   mainWindow.webContents.on('before-input-event', (event, input) => {
+    // Handle ESC key to hide window
     if (input.key === 'Escape' && input.type === 'keyDown') {
+      event.preventDefault();
       fadeOutWindow(() => {
         mainWindow.hide();
-        unregisterCtrlTabShortcut(); // Unregister when hiding via ESC
+      });
+    }
+
+    // Handle Ctrl+Tab to switch tabs
+    if (input.type === 'keyDown' && input.key === 'Tab' && (input.control || input.meta)) {
+      event.preventDefault();
+      mainWindow.webContents.send('switch-next-tab');
+    }
+
+    // Handle global toggle shortcut (Ctrl+Shift+Space) even when webview is focused
+    if (input.type === 'keyDown' &&
+        input.key === ' ' &&
+        input.shift &&
+        (input.control || input.meta)) {
+      event.preventDefault();
+      fadeOutWindow(() => {
+        mainWindow.hide();
       });
     }
   });
@@ -156,27 +194,12 @@ function fadeOutWindow(callback) {
   }, interval);
 }
 
-// Register Ctrl+Tab shortcut (only when overlay is visible)
-function registerCtrlTabShortcut() {
-  globalShortcut.register('CommandOrControl+Tab', () => {
-    if (mainWindow && mainWindow.isVisible()) {
-      mainWindow.webContents.send('switch-next-tab');
-    }
-  });
-}
-
-// Unregister Ctrl+Tab shortcut (when overlay is hidden)
-function unregisterCtrlTabShortcut() {
-  globalShortcut.unregister('CommandOrControl+Tab');
-}
-
 // Toggle window visibility
 function toggleWindow() {
   if (mainWindow) {
     if (mainWindow.isVisible()) {
       fadeOutWindow(() => {
         mainWindow.hide();
-        unregisterCtrlTabShortcut(); // Unregister when hiding
       });
     } else {
       // Move window to the screen where the cursor is currently located
@@ -191,7 +214,6 @@ function toggleWindow() {
 
       // Fade in the window
       fadeInWindow();
-      registerCtrlTabShortcut(); // Register when showing
     }
   }
 }
@@ -382,11 +404,6 @@ function registerToggleShortcut(shortcut) {
       return false;
     }
 
-    // Re-register Ctrl+Tab if window is visible
-    if (mainWindow && mainWindow.isVisible()) {
-      registerCtrlTabShortcut();
-    }
-
     console.log('Global shortcut registered successfully:', shortcut);
     return true;
   } catch (error) {
@@ -452,3 +469,88 @@ function updateTrayMenu() {
 
   tray.setContextMenu(contextMenu);
 }
+
+// IPC handler for backup configuration
+ipcMain.handle('backup-config', async () => {
+  try {
+    // Show save dialog
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Backup Configuration',
+      defaultPath: `overlay-deck-backup-${new Date().toISOString().replace(/:/g, '-').split('.')[0]}.json`,
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (result.canceled) {
+      return { success: false, canceled: true };
+    }
+
+    // Read current configuration
+    const tabs = await fs.readFile(STORAGE_PATH, 'utf8').catch(() => '{"tabs":[],"currentTabId":null}');
+    const settings = await fs.readFile(SETTINGS_PATH, 'utf8').catch(() => '{}');
+
+    // Create backup object
+    const backup = {
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      tabs: JSON.parse(tabs),
+      settings: JSON.parse(settings)
+    };
+
+    // Write to selected file
+    await fs.writeFile(result.filePath, JSON.stringify(backup, null, 2));
+
+    return { success: true, filePath: result.filePath };
+  } catch (error) {
+    console.error('Error backing up configuration:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler for restore configuration
+ipcMain.handle('restore-config', async () => {
+  try {
+    // Show open dialog
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Restore Configuration',
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    });
+
+    if (result.canceled) {
+      return { success: false, canceled: true };
+    }
+
+    // Read backup file
+    const backupData = await fs.readFile(result.filePaths[0], 'utf8');
+    const backup = JSON.parse(backupData);
+
+    // Validate backup structure
+    if (!backup.tabs || !backup.settings) {
+      return { success: false, error: 'Invalid backup file format' };
+    }
+
+    // Save tabs
+    await fs.writeFile(STORAGE_PATH, JSON.stringify(backup.tabs, null, 2));
+
+    // Save settings
+    await fs.writeFile(SETTINGS_PATH, JSON.stringify(backup.settings, null, 2));
+
+    // Load the new shortcut if it exists
+    if (backup.settings.shortcut) {
+      currentShortcut = backup.settings.shortcut;
+      registerToggleShortcut(currentShortcut);
+      updateTrayMenu();
+    }
+
+    return { success: true, filePath: result.filePaths[0] };
+  } catch (error) {
+    console.error('Error restoring configuration:', error);
+    return { success: false, error: error.message };
+  }
+});

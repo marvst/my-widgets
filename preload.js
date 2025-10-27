@@ -11,5 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAutoLaunchStatus: () => ipcRenderer.invoke('get-auto-launch-status'),
   setAutoLaunch: (enabled) => ipcRenderer.invoke('set-auto-launch', enabled),
   getShortcut: () => ipcRenderer.invoke('get-shortcut'),
-  setShortcut: (shortcut) => ipcRenderer.invoke('set-shortcut', shortcut)
+  setShortcut: (shortcut) => ipcRenderer.invoke('set-shortcut', shortcut),
+  backupConfig: () => ipcRenderer.invoke('backup-config'),
+  restoreConfig: () => ipcRenderer.invoke('restore-config')
 });

@@ -141,22 +141,20 @@ button, input, form, .widgets-container, .widget, .add-widget-panel {
   padding: 2px 4px;
   border-radius: 3px;
   transition: all 0.2s ease;
-  cursor: text;
+  cursor: default;
+  pointer-events: none;
 }
 
 .tab-name-editable:not([readonly]):focus {
   border-color: #00a1ff;
   background: rgba(0, 161, 255, 0.1);
   box-shadow: 0 0 0 2px rgba(0, 161, 255, 0.2);
-}
-
-.tab-name-editable:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.05);
+  pointer-events: auto;
 }
 
 .tab-name-editable:not([readonly]) {
   cursor: text;
+  pointer-events: auto;
 }
 
 .tab-close {
@@ -226,6 +224,13 @@ button {
   background: #0091ef;
   border-color: rgba(255, 255, 255, 0.3);
   box-shadow: 0 2px 8px rgba(0, 161, 255, 0.4);
+}
+
+.btn-edit i,
+.btn-danger i,
+.btn-auto-focus i {
+  margin-right: 4px;
+  font-size: 11px;
 }
 
 .btn-danger {
@@ -563,7 +568,7 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 5px;
   padding: 4px 10px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   outline: none;
@@ -573,6 +578,10 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.nav-btn i {
+  font-size: 13px;
 }
 
 .nav-btn:hover:not(:disabled) {
@@ -690,6 +699,12 @@ button {
   border-radius: 8px;
   margin-bottom: 10px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.setting-item-column {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .setting-label {
@@ -872,4 +887,61 @@ button {
 
 .btn-reset:active {
   transform: scale(0.95);
+}
+
+/* Backup/Restore Buttons */
+.backup-restore-buttons {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.btn-backup,
+.btn-restore {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-backup i,
+.btn-restore i {
+  font-size: 16px;
+  margin-right: 8px;
+}
+
+.btn-backup {
+  background: #00a1ff;
+  color: white;
+}
+
+.btn-backup:hover {
+  background: #0091ef;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 161, 255, 0.4);
+}
+
+.btn-restore {
+  background: #4a4a5a;
+  color: white;
+}
+
+.btn-restore:hover {
+  background: #5a5a6a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 74, 90, 0.4);
+}
+
+.btn-backup:active,
+.btn-restore:active {
+  transform: scale(0.98);
 }

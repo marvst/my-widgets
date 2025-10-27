@@ -24,6 +24,8 @@ const editWidgetModal = document.getElementById('edit-widget-modal');
 const editWidgetForm = document.getElementById('edit-widget-form');
 const closeEditModalBtn = document.getElementById('close-edit-modal');
 const cancelEditBtn = document.getElementById('cancel-edit');
+const backupConfigBtn = document.getElementById('backup-config-btn');
+const restoreConfigBtn = document.getElementById('restore-config-btn');
 
 // Context menu state
 let contextMenuTargetTabId = null;
@@ -88,6 +90,7 @@ function createTabElement(tab) {
   const tabDiv = document.createElement('div');
   tabDiv.className = 'tab';
   tabDiv.dataset.tabId = tab.id;
+  tabDiv.title = 'Right-click for options';
 
   if (tab.id === currentTabId) {
     tabDiv.classList.add('active');
@@ -98,7 +101,6 @@ function createTabElement(tab) {
   tabName.type = 'text';
   tabName.value = tab.name;
   tabName.readOnly = true;
-  tabName.title = 'Double-click to rename';
 
   // Double-click to edit tab name
   tabName.addEventListener('dblclick', (e) => {
@@ -315,19 +317,19 @@ function createWidgetElement(widget) {
 
   const backBtn = document.createElement('button');
   backBtn.className = 'nav-btn';
-  backBtn.innerHTML = '←';
+  backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i>';
   backBtn.title = 'Go back';
   backBtn.disabled = true;
 
   const forwardBtn = document.createElement('button');
   forwardBtn.className = 'nav-btn';
-  forwardBtn.innerHTML = '→';
+  forwardBtn.innerHTML = '<i class="fa-solid fa-arrow-right"></i>';
   forwardBtn.title = 'Go forward';
   forwardBtn.disabled = true;
 
   const refreshBtn = document.createElement('button');
   refreshBtn.className = 'nav-btn';
-  refreshBtn.innerHTML = '↻';
+  refreshBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i>';
   refreshBtn.title = 'Refresh';
 
   navControls.appendChild(backBtn);
@@ -340,14 +342,14 @@ function createWidgetElement(widget) {
   // Edit button
   const editBtn = document.createElement('button');
   editBtn.className = 'btn-edit';
-  editBtn.textContent = 'Edit';
+  editBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Edit';
   editBtn.title = 'Edit widget name and URL';
   editBtn.onclick = () => showEditWidgetModal(widget.id);
 
   // Auto-focus toggle button
   const autoFocusBtn = document.createElement('button');
   autoFocusBtn.className = widget.autoFocus ? 'btn-auto-focus active' : 'btn-auto-focus';
-  autoFocusBtn.textContent = widget.autoFocus ? '★ Auto' : '☆ Auto';
+  autoFocusBtn.innerHTML = widget.autoFocus ? '<i class="fa-solid fa-star"></i> Auto' : '<i class="fa-regular fa-star"></i> Auto';
   autoFocusBtn.title = widget.autoFocus ? 'Auto-focus enabled' : 'Enable auto-focus on tab open';
   autoFocusBtn.onclick = async () => {
     await toggleAutoFocus(widget.id);
@@ -355,7 +357,7 @@ function createWidgetElement(widget) {
 
   const removeBtn = document.createElement('button');
   removeBtn.className = 'btn-danger';
-  removeBtn.textContent = 'Remove';
+  removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i> Remove';
   removeBtn.onclick = () => removeWidget(widget.id);
 
   actions.appendChild(editBtn);
@@ -736,7 +738,7 @@ async function toggleAutoFocus(widgetId) {
           const otherBtn = otherWidgetElement.querySelector('.btn-auto-focus');
           if (otherBtn) {
             otherBtn.className = 'btn-auto-focus';
-            otherBtn.textContent = '☆ Auto';
+            otherBtn.innerHTML = '<i class="fa-regular fa-star"></i> Auto';
             otherBtn.title = 'Enable auto-focus on tab open';
           }
         }
@@ -753,11 +755,11 @@ async function toggleAutoFocus(widgetId) {
       if (btn) {
         if (widget.autoFocus) {
           btn.className = 'btn-auto-focus active';
-          btn.textContent = '★ Auto';
+          btn.innerHTML = '<i class="fa-solid fa-star"></i> Auto';
           btn.title = 'Auto-focus enabled';
         } else {
           btn.className = 'btn-auto-focus';
-          btn.textContent = '☆ Auto';
+          btn.innerHTML = '<i class="fa-regular fa-star"></i> Auto';
           btn.title = 'Enable auto-focus on tab open';
         }
       }
@@ -1074,6 +1076,63 @@ async function resetShortcut() {
   await setShortcut('CommandOrControl+Shift+Space');
 }
 
+// Backup configuration
+async function backupConfiguration() {
+  try {
+    const result = await window.electronAPI.backupConfig();
+
+    if (result.canceled) {
+      console.log('Backup canceled by user');
+      return;
+    }
+
+    if (result.success) {
+      alert('Configuration backed up successfully!\n\nFile saved to:\n' + result.filePath);
+      console.log('Configuration backed up to:', result.filePath);
+    } else {
+      alert('Failed to backup configuration: ' + (result.error || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Error backing up configuration:', error);
+    alert('Failed to backup configuration');
+  }
+}
+
+// Restore configuration
+async function restoreConfiguration() {
+  try {
+    const confirmed = confirm(
+      'Warning: Restoring a configuration will replace your current tabs, widgets, and settings.\n\n' +
+      'Your current configuration will be lost unless you have backed it up.\n\n' +
+      'Do you want to continue?'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const result = await window.electronAPI.restoreConfig();
+
+    if (result.canceled) {
+      console.log('Restore canceled by user');
+      return;
+    }
+
+    if (result.success) {
+      alert('Configuration restored successfully!\n\nThe app will reload now.');
+      console.log('Configuration restored from:', result.filePath);
+
+      // Reload the app to apply new configuration
+      window.location.reload();
+    } else {
+      alert('Failed to restore configuration: ' + (result.error || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Error restoring configuration:', error);
+    alert('Failed to restore configuration: ' + error.message);
+  }
+}
+
 // Truncate URL for display
 function truncateUrl(url) {
   try {
@@ -1163,6 +1222,12 @@ function setupEventListeners() {
 
   // Reset shortcut button
   resetShortcutBtn.addEventListener('click', resetShortcut);
+
+  // Backup configuration button
+  backupConfigBtn.addEventListener('click', backupConfiguration);
+
+  // Restore configuration button
+  restoreConfigBtn.addEventListener('click', restoreConfiguration);
 
   // Edit widget form submission
   editWidgetForm.addEventListener('submit', (e) => {

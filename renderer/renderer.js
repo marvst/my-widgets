@@ -796,7 +796,13 @@ function showEditWidgetModal(widgetId) {
   // Pre-fill form with current widget data
   document.getElementById('edit-widget-name').value = widget.name;
   document.getElementById('edit-widget-url').value = widget.url;
-  document.getElementById('edit-widget-navigation-mode').value = widget.navigationMode || 'same-domain';
+
+  // Set the correct radio button
+  const navMode = widget.navigationMode || 'same-domain';
+  const radioToCheck = document.querySelector(`input[name="edit-widget-navigation-mode"][value="${navMode === 'same-domain' ? 'internal' : navMode}"]`);
+  if (radioToCheck) {
+    radioToCheck.checked = true;
+  }
 
   // Show modal
   addWidgetModal.classList.add('hidden');
@@ -1260,7 +1266,7 @@ function setupEventListeners() {
 
     const name = document.getElementById('edit-widget-name').value;
     const url = document.getElementById('edit-widget-url').value;
-    const navigationMode = document.getElementById('edit-widget-navigation-mode').value;
+    const navigationMode = document.querySelector('input[name="edit-widget-navigation-mode"]:checked').value;
 
     if (editingWidgetId) {
       updateWidget(editingWidgetId, name, url, navigationMode);
@@ -1310,7 +1316,7 @@ function setupEventListeners() {
     const url = document.getElementById('widget-url').value;
     const width = document.getElementById('widget-width').value;
     const height = document.getElementById('widget-height').value;
-    const navigationMode = document.getElementById('widget-navigation-mode').value;
+    const navigationMode = document.querySelector('input[name="widget-navigation-mode"]:checked').value;
 
     addWidget(name, url, width, height, navigationMode);
   });

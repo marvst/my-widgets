@@ -75,11 +75,29 @@
           </div>
         </div>
         <div class="form-group">
-          <label for="widget-navigation-mode">Navigation Mode:</label>
-          <select id="widget-navigation-mode" class="form-select">
-            <option value="internal" selected>Keep all navigation within widget (browse freely)</option>
-            <option value="external">Open all navigation in browser</option>
-          </select>
+          <label class="form-label-main">Navigation Mode:</label>
+          <div class="navigation-mode-options">
+            <label class="navigation-mode-option">
+              <input type="radio" name="widget-navigation-mode" value="internal" checked>
+              <div class="option-content">
+                <div class="option-title">
+                  <i class="fas fa-globe"></i>
+                  Internal Browsing
+                </div>
+                <div class="option-description">Allow free navigation within the widget. Links stay inside.</div>
+              </div>
+            </label>
+            <label class="navigation-mode-option">
+              <input type="radio" name="widget-navigation-mode" value="external">
+              <div class="option-content">
+                <div class="option-title">
+                  <i class="fas fa-external-link-alt"></i>
+                  External Only
+                </div>
+                <div class="option-description">Lock widget to the URL. All clicks open in your computer's browser.</div>
+              </div>
+            </label>
+          </div>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn-primary">Add Widget</button>
@@ -152,11 +170,29 @@
           <input type="url" id="edit-widget-url" placeholder="https://example.com" required>
         </div>
         <div class="form-group">
-          <label for="edit-widget-navigation-mode">Navigation Mode:</label>
-          <select id="edit-widget-navigation-mode" class="form-select">
-            <option value="internal">Keep all navigation within widget (browse freely)</option>
-            <option value="external">Open all navigation in browser</option>
-          </select>
+          <label class="form-label-main">Navigation Mode:</label>
+          <div class="navigation-mode-options">
+            <label class="navigation-mode-option">
+              <input type="radio" name="edit-widget-navigation-mode" value="internal">
+              <div class="option-content">
+                <div class="option-title">
+                  <i class="fas fa-globe"></i>
+                  Internal Browsing
+                </div>
+                <div class="option-description">Allow free navigation within the widget. Links stay inside.</div>
+              </div>
+            </label>
+            <label class="navigation-mode-option">
+              <input type="radio" name="edit-widget-navigation-mode" value="external">
+              <div class="option-content">
+                <div class="option-title">
+                  <i class="fas fa-external-link-alt"></i>
+                  External Only
+                </div>
+                <div class="option-description">Lock widget to the URL. All clicks open in your computer's browser.</div>
+              </div>
+            </label>
+          </div>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn-primary">Save Changes</button>

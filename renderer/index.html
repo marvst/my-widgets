@@ -110,6 +110,28 @@
         </div>
       </div>
     </div>
+
+    <!-- Edit Widget Modal -->
+    <div id="edit-widget-modal" class="modal hidden">
+      <div class="modal-header">
+        <h2>Edit Widget</h2>
+        <button type="button" id="close-edit-modal" class="btn-close">&times;</button>
+      </div>
+      <form id="edit-widget-form">
+        <div class="form-group">
+          <label for="edit-widget-name">Name:</label>
+          <input type="text" id="edit-widget-name" placeholder="e.g., YouTube, Gmail, etc." required>
+        </div>
+        <div class="form-group">
+          <label for="edit-widget-url">URL:</label>
+          <input type="url" id="edit-widget-url" placeholder="https://example.com" required>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Save Changes</button>
+          <button type="button" id="cancel-edit" class="btn-secondary">Cancel</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- Widgets Container -->

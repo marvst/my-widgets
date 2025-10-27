@@ -20,9 +20,16 @@ const autoLaunchToggle = document.getElementById('auto-launch-toggle');
 const tabContextMenu = document.getElementById('tab-context-menu');
 const shortcutInput = document.getElementById('shortcut-input');
 const resetShortcutBtn = document.getElementById('reset-shortcut-btn');
+const editWidgetModal = document.getElementById('edit-widget-modal');
+const editWidgetForm = document.getElementById('edit-widget-form');
+const closeEditModalBtn = document.getElementById('close-edit-modal');
+const cancelEditBtn = document.getElementById('cancel-edit');
 
 // Context menu state
 let contextMenuTargetTabId = null;
+
+// Edit widget state
+let editingWidgetId = null;
 
 // Shortcut recording state
 let isRecordingShortcut = false;
@@ -302,8 +309,40 @@ function createWidgetElement(widget) {
   titleContainer.appendChild(title);
   titleContainer.appendChild(url);
 
+  // Navigation controls (back, forward, refresh)
+  const navControls = document.createElement('div');
+  navControls.className = 'nav-controls';
+
+  const backBtn = document.createElement('button');
+  backBtn.className = 'nav-btn';
+  backBtn.innerHTML = '←';
+  backBtn.title = 'Go back';
+  backBtn.disabled = true;
+
+  const forwardBtn = document.createElement('button');
+  forwardBtn.className = 'nav-btn';
+  forwardBtn.innerHTML = '→';
+  forwardBtn.title = 'Go forward';
+  forwardBtn.disabled = true;
+
+  const refreshBtn = document.createElement('button');
+  refreshBtn.className = 'nav-btn';
+  refreshBtn.innerHTML = '↻';
+  refreshBtn.title = 'Refresh';
+
+  navControls.appendChild(backBtn);
+  navControls.appendChild(forwardBtn);
+  navControls.appendChild(refreshBtn);
+
   const actions = document.createElement('div');
   actions.className = 'widget-actions';
+
+  // Edit button
+  const editBtn = document.createElement('button');
+  editBtn.className = 'btn-edit';
+  editBtn.textContent = 'Edit';
+  editBtn.title = 'Edit widget name and URL';
+  editBtn.onclick = () => showEditWidgetModal(widget.id);
 
   // Auto-focus toggle button
   const autoFocusBtn = document.createElement('button');
@@ -319,10 +358,12 @@ function createWidgetElement(widget) {
   removeBtn.textContent = 'Remove';
   removeBtn.onclick = () => removeWidget(widget.id);
 
+  actions.appendChild(editBtn);
   actions.appendChild(autoFocusBtn);
   actions.appendChild(removeBtn);
 
   header.appendChild(titleContainer);
+  header.appendChild(navControls);
 
   // Create widget content
   const content = document.createElement('div');
@@ -498,6 +539,34 @@ function createWidgetElement(widget) {
       window.electronAPI.openExternal(event.url);
     }
   });
+
+  // Update navigation buttons when webview navigates
+  webview.addEventListener('did-navigate', () => {
+    backBtn.disabled = !webview.canGoBack();
+    forwardBtn.disabled = !webview.canGoForward();
+  });
+
+  webview.addEventListener('did-navigate-in-page', () => {
+    backBtn.disabled = !webview.canGoBack();
+    forwardBtn.disabled = !webview.canGoForward();
+  });
+
+  // Navigation button handlers
+  backBtn.onclick = () => {
+    if (webview.canGoBack()) {
+      webview.goBack();
+    }
+  };
+
+  forwardBtn.onclick = () => {
+    if (webview.canGoForward()) {
+      webview.goForward();
+    }
+  };
+
+  refreshBtn.onclick = () => {
+    webview.reload();
+  };
 
   content.appendChild(webview);
 
@@ -702,10 +771,99 @@ async function toggleAutoFocus(widgetId) {
   }
 }
 
+// Show edit widget modal
+function showEditWidgetModal(widgetId) {
+  const currentTab = tabs.find(t => t.id === currentTabId);
+  if (!currentTab) return;
+
+  const widget = currentTab.widgets.find(w => w.id === widgetId);
+  if (!widget) return;
+
+  editingWidgetId = widgetId;
+
+  // Pre-fill form with current widget data
+  document.getElementById('edit-widget-name').value = widget.name;
+  document.getElementById('edit-widget-url').value = widget.url;
+
+  // Show modal
+  addWidgetModal.classList.add('hidden');
+  settingsModal.classList.add('hidden');
+  editWidgetModal.classList.remove('hidden');
+  modalOverlay.classList.remove('hidden');
+
+  // Wait for animation to complete before focusing
+  modalOverlay.addEventListener('animationend', () => {
+    window.electronAPI.setModalState(true);
+    document.getElementById('edit-widget-name').focus();
+  }, { once: true });
+}
+
+// Hide edit widget modal
+function hideEditWidgetModal() {
+  editWidgetModal.classList.add('hidden');
+  modalOverlay.classList.add('hidden');
+  editWidgetForm.reset();
+  editingWidgetId = null;
+  window.electronAPI.setModalState(false);
+}
+
+// Update widget details
+async function updateWidget(widgetId, newName, newUrl) {
+  try {
+    const currentTab = tabs.find(t => t.id === currentTabId);
+    if (!currentTab) return;
+
+    const widget = currentTab.widgets.find(w => w.id === widgetId);
+    if (!widget) return;
+
+    // Ensure URL has protocol
+    if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
+      newUrl = 'https://' + newUrl;
+    }
+
+    // Update widget data
+    widget.name = newName;
+    widget.url = newUrl;
+
+    // Save to storage
+    await saveTabs();
+
+    // Update DOM elements
+    const widgetElement = document.querySelector(`[data-widget-id="${widgetId}"]`);
+    if (widgetElement) {
+      // Update title
+      const titleElement = widgetElement.querySelector('.widget-title');
+      if (titleElement) {
+        titleElement.textContent = newName;
+        titleElement.title = newName;
+      }
+
+      // Update URL display
+      const urlElement = widgetElement.querySelector('.widget-url');
+      if (urlElement) {
+        urlElement.textContent = truncateUrl(newUrl);
+        urlElement.title = newUrl;
+      }
+
+      // Update webview
+      const webview = widgetElement.querySelector('webview');
+      if (webview && webview.src !== newUrl) {
+        webview.src = newUrl;
+      }
+    }
+
+    hideEditWidgetModal();
+  } catch (error) {
+    console.error('Error updating widget:', error);
+    alert('Failed to update widget');
+  }
+}
+
 // Show modal
 function showModal() {
   addWidgetModal.classList.remove('hidden');
   settingsModal.classList.add('hidden');
+  editWidgetModal.classList.add('hidden');
   modalOverlay.classList.remove('hidden');
 
   // Wait for animation to complete before focusing
@@ -722,6 +880,7 @@ function hideModal() {
   modalOverlay.classList.add('hidden');
   addWidgetModal.classList.add('hidden');
   settingsModal.classList.add('hidden');
+  editWidgetModal.classList.add('hidden');
   addWidgetForm.reset();
   // Notify main process that modal is closed
   window.electronAPI.setModalState(false);
@@ -730,6 +889,7 @@ function hideModal() {
 // Show settings modal
 async function showSettingsModal() {
   addWidgetModal.classList.add('hidden');
+  editWidgetModal.classList.add('hidden');
   settingsModal.classList.remove('hidden');
   modalOverlay.classList.remove('hidden');
   window.electronAPI.setModalState(true);
@@ -1004,11 +1164,31 @@ function setupEventListeners() {
   // Reset shortcut button
   resetShortcutBtn.addEventListener('click', resetShortcut);
 
+  // Edit widget form submission
+  editWidgetForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById('edit-widget-name').value;
+    const url = document.getElementById('edit-widget-url').value;
+
+    if (editingWidgetId) {
+      updateWidget(editingWidgetId, name, url);
+    }
+  });
+
+  // Close edit modal - close button
+  closeEditModalBtn.addEventListener('click', hideEditWidgetModal);
+
+  // Close edit modal - cancel button
+  cancelEditBtn.addEventListener('click', hideEditWidgetModal);
+
   // Close modal - click outside
   modalOverlay.addEventListener('click', (e) => {
     if (e.target === modalOverlay) {
       if (!settingsModal.classList.contains('hidden')) {
         hideSettingsModal();
+      } else if (!editWidgetModal.classList.contains('hidden')) {
+        hideEditWidgetModal();
       } else {
         hideModal();
       }
@@ -1020,6 +1200,8 @@ function setupEventListeners() {
     if (e.key === 'Escape' && !modalOverlay.classList.contains('hidden')) {
       if (!settingsModal.classList.contains('hidden')) {
         hideSettingsModal();
+      } else if (!editWidgetModal.classList.contains('hidden')) {
+        hideEditWidgetModal();
       } else {
         hideModal();
       }

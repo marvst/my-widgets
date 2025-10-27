@@ -211,6 +211,23 @@ button {
   background: #4a4a5a;
 }
 
+.btn-edit {
+  background: #00a1ff;
+  color: white;
+  padding: 5px 12px;
+  font-size: 11px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.btn-edit:hover {
+  background: #0091ef;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 161, 255, 0.4);
+}
+
 .btn-danger {
   background: #ff4a4a;
   color: white;
@@ -477,13 +494,16 @@ button {
   z-index: 10;
   gap: 12px;
   min-height: 42px;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .widget-title-container {
   display: flex;
   align-items: center;
-  flex: 1;
-  min-width: 0;
+  flex: 0 1 auto;
+  min-width: 80px;
+  max-width: 200px;
   gap: 8px;
 }
 
@@ -522,6 +542,54 @@ button {
   width: 100%;
   height: 100%;
 }
+
+.nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  margin-left: 12px;
+}
+
+.widget:hover .nav-controls {
+  opacity: 1;
+}
+
+.nav-btn {
+  background: #3a3a4a;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  min-width: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: #4a4a5a;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(74, 158, 255, 0.4);
+}
+
+.nav-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 
 .resize-controls {
   display: flex;

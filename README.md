@@ -46,6 +46,12 @@ To create a portable Windows executable:
 
 **Note**: The build process may take a few minutes. The output is a portable application that doesn't require installation - just run the .exe file directly.
 
+To create an store version:
+
+```bash
+npm run build:appx
+```
+
 ### Alternative: Add a build script to package.json
 
 You can add this to your `scripts` section in package.json:

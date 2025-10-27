@@ -49,6 +49,7 @@ To create a portable Windows executable:
 To create an store version:
 
 ```bash
+npm version patch/minor/major
 npm run build:appx
 ```
 

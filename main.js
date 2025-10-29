@@ -12,6 +12,8 @@ const webviewNavigationModes = new Map();
 let SETTINGS_PATH;
 let autoLauncher;
 let currentShortcut = 'CommandOrControl+Shift+Space';
+let currentTabCycleShortcut = 'CommandOrControl+Tab';
+let tabsData = { tabs: [], currentTabId: null }; // Cache of tabs data for shortcut handling
 
 function createWindow() {
   // Get the display where the cursor is currently located
@@ -157,10 +159,22 @@ function createWindow() {
         });
       }
 
-      // Forward Ctrl+Tab to switch tabs
-      if (input.type === 'keyDown' && input.key === 'Tab' && (input.control || input.meta)) {
+      // Forward tab cycle shortcut (Ctrl+Tab by default)
+      if (input.type === 'keyDown' && inputMatchesShortcut(input, currentTabCycleShortcut)) {
         event.preventDefault();
-        mainWindow.webContents.send('switch-next-tab');
+        mainWindow.webContents.send('cycle-tab');
+      }
+
+      // Forward tab-specific shortcuts
+      if (input.type === 'keyDown' && tabsData.tabs) {
+        for (let i = 0; i < tabsData.tabs.length; i++) {
+          const tab = tabsData.tabs[i];
+          if (tab.shortcut && inputMatchesShortcut(input, tab.shortcut)) {
+            event.preventDefault();
+            mainWindow.webContents.send('switch-to-tab', i);
+            break;
+          }
+        }
       }
     });
   });
@@ -185,10 +199,22 @@ function createWindow() {
       });
     }
 
-    // Handle Ctrl+Tab to switch tabs
-    if (input.type === 'keyDown' && input.key === 'Tab' && (input.control || input.meta)) {
+    // Handle tab cycle shortcut (Ctrl+Tab by default)
+    if (input.type === 'keyDown' && inputMatchesShortcut(input, currentTabCycleShortcut)) {
       event.preventDefault();
-      mainWindow.webContents.send('switch-next-tab');
+      mainWindow.webContents.send('cycle-tab');
+    }
+
+    // Handle tab-specific shortcuts
+    if (input.type === 'keyDown' && tabsData.tabs) {
+      for (let i = 0; i < tabsData.tabs.length; i++) {
+        const tab = tabsData.tabs[i];
+        if (tab.shortcut && inputMatchesShortcut(input, tab.shortcut)) {
+          event.preventDefault();
+          mainWindow.webContents.send('switch-to-tab', i);
+          break;
+        }
+      }
     }
 
     // Handle global toggle shortcut (Ctrl+Shift+Space) even when webview is focused
@@ -333,8 +359,9 @@ app.whenReady().then(async () => {
   createWindow();
   createTray();
 
-  // Register global shortcut to toggle overlay
+  // Register global shortcuts
   registerToggleShortcut(currentShortcut);
+  // Tab cycle and specific tab shortcuts are handled via before-input-event (window-local, not global)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -361,16 +388,19 @@ app.on('will-quit', () => {
 ipcMain.handle('get-tabs', async () => {
   try {
     const data = await fs.readFile(STORAGE_PATH, 'utf8');
-    return JSON.parse(data);
+    tabsData = JSON.parse(data);
+    return tabsData;
   } catch (error) {
     // If file doesn't exist, return empty structure
-    return { tabs: [], currentTabId: null };
+    tabsData = { tabs: [], currentTabId: null };
+    return tabsData;
   }
 });
 
 ipcMain.handle('save-tabs', async (event, data) => {
   try {
     await fs.writeFile(STORAGE_PATH, JSON.stringify(data, null, 2));
+    tabsData = data; // Update cache
     return { success: true };
   } catch (error) {
     console.error('Error saving tabs:', error);
@@ -436,9 +466,13 @@ async function loadShortcut() {
       currentShortcut = settings.shortcut;
       console.log('Loaded shortcut:', currentShortcut);
     }
+    if (settings.tabCycleShortcut) {
+      currentTabCycleShortcut = settings.tabCycleShortcut;
+      console.log('Loaded tab cycle shortcut:', currentTabCycleShortcut);
+    }
   } catch (error) {
-    // File doesn't exist or is invalid, use default
-    console.log('Using default shortcut:', currentShortcut);
+    // File doesn't exist or is invalid, use defaults
+    console.log('Using default shortcuts');
   }
 }
 
@@ -461,13 +495,75 @@ async function saveShortcut(shortcut) {
   }
 }
 
+// Save tab shortcuts to settings
+async function saveTabShortcuts(tabCycleShortcut) {
+  try {
+    let settings = {};
+    try {
+      const data = await fs.readFile(SETTINGS_PATH, 'utf8');
+      settings = JSON.parse(data);
+    } catch (error) {
+      // File doesn't exist, use empty object
+    }
+    settings.tabCycleShortcut = tabCycleShortcut;
+    await fs.writeFile(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving tab shortcuts:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Helper function to check if input matches a shortcut string
+function inputMatchesShortcut(input, shortcut) {
+  const parts = shortcut.split('+');
+  const modifiers = {
+    control: false,
+    meta: false,
+    alt: false,
+    shift: false
+  };
+  let key = '';
+
+  for (const part of parts) {
+    const lower = part.toLowerCase();
+    if (lower === 'commandorcontrol' || lower === 'ctrl' || lower === 'control') {
+      modifiers.control = true;
+      modifiers.meta = true; // CommandOrControl means either
+    } else if (lower === 'alt') {
+      modifiers.alt = true;
+    } else if (lower === 'shift') {
+      modifiers.shift = true;
+    } else if (lower === 'meta' || lower === 'cmd' || lower === 'command') {
+      modifiers.meta = true;
+    } else {
+      key = part.toLowerCase();
+    }
+  }
+
+  // Check if modifiers match
+  const controlMatch = modifiers.control ? (input.control || input.meta) : (!input.control && !input.meta);
+  const altMatch = modifiers.alt ? input.alt : !input.alt;
+  const shiftMatch = modifiers.shift ? input.shift : !input.shift;
+
+  // Check if key matches
+  const inputKey = input.key.toLowerCase();
+  const keyMatch = inputKey === key ||
+                   (key === 'space' && inputKey === ' ') ||
+                   (key === 'tab' && inputKey === 'tab');
+
+  return controlMatch && altMatch && shiftMatch && keyMatch;
+}
+
 // Register toggle shortcut
 function registerToggleShortcut(shortcut) {
   try {
-    // Unregister previous shortcut if exists
-    globalShortcut.unregisterAll();
+    // Unregister only the previous toggle shortcut if it's different
+    if (globalShortcut.isRegistered(currentShortcut) && currentShortcut !== shortcut) {
+      globalShortcut.unregister(currentShortcut);
+    }
 
-    console.log('Attempting to register shortcut:', shortcut);
+    console.log('Attempting to register toggle shortcut:', shortcut);
 
     // Register new shortcut
     const ret = globalShortcut.register(shortcut, () => {
@@ -486,6 +582,9 @@ function registerToggleShortcut(shortcut) {
     throw error;
   }
 }
+
+// Tab cycle and specific tab shortcuts are now handled via before-input-event (window-local)
+// This keeps them consistent with Ctrl+Tab behavior and allows user configuration
 
 // IPC handlers for shortcut management
 ipcMain.handle('get-shortcut', async () => {
@@ -516,6 +615,42 @@ ipcMain.handle('set-shortcut', async (event, shortcut) => {
     return { success: true };
   } catch (error) {
     console.error('Error setting shortcut:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handlers for tab shortcuts
+ipcMain.handle('get-tab-shortcuts', async () => {
+  return {
+    tabCycleShortcut: currentTabCycleShortcut
+  };
+});
+
+ipcMain.handle('set-tab-shortcuts', async (event, shortcuts) => {
+  try {
+    // Validate shortcuts format
+    if (!shortcuts || typeof shortcuts !== 'object') {
+      return { success: false, error: 'Invalid shortcuts format' };
+    }
+
+    const { tabCycleShortcut } = shortcuts;
+
+    // Validate tab cycle shortcut if provided
+    if (tabCycleShortcut && typeof tabCycleShortcut !== 'string') {
+      return { success: false, error: 'Invalid tab cycle shortcut format' };
+    }
+
+    // Update tab cycle shortcut if changed
+    if (tabCycleShortcut && tabCycleShortcut !== currentTabCycleShortcut) {
+      currentTabCycleShortcut = tabCycleShortcut;
+    }
+
+    // Save to settings
+    await saveTabShortcuts(currentTabCycleShortcut);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error setting tab shortcuts:', error);
     return { success: false, error: error.message };
   }
 });

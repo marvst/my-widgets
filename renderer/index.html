@@ -107,48 +107,76 @@
     </div>
 
     <!-- Settings Modal -->
-    <div id="settings-modal" class="modal hidden">
+    <div id="settings-modal" class="modal hidden" style="min-width: 40%;">
       <div class="modal-header">
         <h2>Settings</h2>
         <button type="button" id="close-settings-modal" class="btn-close">&times;</button>
       </div>
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="general">General</button>
+        <button class="settings-tab" data-tab="shortcuts">Shortcuts</button>
+      </div>
       <div class="settings-content">
-        <div class="setting-item">
-          <label for="auto-launch-toggle" class="setting-label">
-            <span>Start with Windows</span>
-            <small>Launch Overlay Deck automatically when your computer starts</small>
-          </label>
-          <label class="toggle-switch">
-            <input type="checkbox" id="auto-launch-toggle">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
+        <!-- General Tab -->
+        <div id="general-tab" class="settings-tab-content active">
+          <div class="setting-item">
+            <label for="auto-launch-toggle" class="setting-label">
+              <span>Start with Windows</span>
+              <small>Launch Overlay Deck automatically when your computer starts</small>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="auto-launch-toggle">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
 
-        <div class="setting-item">
-          <label class="setting-label">
-            <span>Toggle Overlay Shortcut</span>
-            <small>Press a key combination to toggle the overlay window</small>
-          </label>
-          <div class="shortcut-input-container">
-            <input type="text" id="shortcut-input" class="shortcut-input" readonly placeholder="Click to record shortcut">
-            <button type="button" id="reset-shortcut-btn" class="btn-reset">Reset</button>
+          <div class="setting-item setting-item-column">
+            <label class="setting-label">
+              <span>Configuration Backup & Restore</span>
+              <small>Save or load your tabs, widgets, and settings</small>
+            </label>
+            <div class="backup-restore-buttons">
+              <button type="button" id="backup-config-btn" class="btn-backup">
+                <i class="fa-solid fa-upload"></i>
+                Backup Configuration
+              </button>
+              <button type="button" id="restore-config-btn" class="btn-restore">
+                <i class="fa-solid fa-download"></i>
+                Restore Configuration
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="setting-item setting-item-column">
-          <label class="setting-label">
-            <span>Configuration Backup & Restore</span>
-            <small>Save or load your tabs, widgets, and settings</small>
-          </label>
-          <div class="backup-restore-buttons">
-            <button type="button" id="backup-config-btn" class="btn-backup">
-              <i class="fa-solid fa-upload"></i>
-              Backup Configuration
-            </button>
-            <button type="button" id="restore-config-btn" class="btn-restore">
-              <i class="fa-solid fa-download"></i>
-              Restore Configuration
-            </button>
+        <!-- Shortcuts Tab -->
+        <div id="shortcuts-tab" class="settings-tab-content">
+          <div class="setting-item">
+            <label class="setting-label">
+              <span>Toggle Overlay</span>
+              <small>Show/hide the overlay window from anywhere</small>
+            </label>
+            <div class="shortcut-input-container">
+              <input type="text" id="shortcut-input" class="shortcut-input" readonly placeholder="Click to record shortcut">
+              <button type="button" id="reset-shortcut-btn" class="btn-reset">Reset</button>
+            </div>
+          </div>
+
+          <div class="setting-item">
+            <label class="setting-label">
+              <span>Cycle Through Tabs</span>
+              <small>Switch to the next tab in sequence</small>
+            </label>
+            <div class="shortcut-input-container">
+              <input type="text" id="tab-cycle-shortcut-input" class="shortcut-input" readonly placeholder="Click to record shortcut">
+              <button type="button" id="reset-tab-cycle-shortcut-btn" class="btn-reset">Reset</button>
+            </div>
+          </div>
+
+          <div class="setting-item setting-item-column">
+            <label class="setting-label">
+              <span>Jump to Specific Tabs</span>
+              <small>Alt+1 for first tab, Alt+2 for second, etc.</small>
+            </label>
           </div>
         </div>
       </div>

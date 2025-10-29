@@ -26,6 +26,9 @@ const closeEditModalBtn = document.getElementById('close-edit-modal');
 const cancelEditBtn = document.getElementById('cancel-edit');
 const backupConfigBtn = document.getElementById('backup-config-btn');
 const restoreConfigBtn = document.getElementById('restore-config-btn');
+const settingsTabs = document.querySelectorAll('.settings-tab');
+const tabCycleShortcutInput = document.getElementById('tab-cycle-shortcut-input');
+const resetTabCycleShortcutBtn = document.getElementById('reset-tab-cycle-shortcut-btn');
 
 // Context menu state
 let contextMenuTargetTabId = null;
@@ -35,7 +38,9 @@ let editingWidgetId = null;
 
 // Shortcut recording state
 let isRecordingShortcut = false;
+let isRecordingTabCycleShortcut = false;
 let currentShortcut = 'CommandOrControl+Shift+Space';
+let currentTabCycleShortcut = 'CommandOrControl+Tab';
 
 // Initialize
 async function init() {
@@ -55,9 +60,14 @@ async function init() {
 
   setupEventListeners();
 
-  // Listen for Ctrl+Tab from main process global shortcut
-  window.electronAPI.onSwitchNextTab(() => {
+  // Listen for tab cycle shortcut from main process
+  window.electronAPI.onCycleTab(() => {
     switchToNextTab();
+  });
+
+  // Listen for specific tab shortcuts (Alt+1-9) from main process
+  window.electronAPI.onSwitchToTab((index) => {
+    switchToTabByIndex(index);
   });
 }
 
@@ -67,6 +77,20 @@ async function loadTabs() {
     const data = await window.electronAPI.getTabs();
     tabs = data.tabs || [];
     currentTabId = data.currentTabId || null;
+
+    // Add default shortcuts to existing tabs that don't have them
+    let needsSave = false;
+    tabs.forEach((tab, index) => {
+      if (tab.shortcut === undefined) {
+        tab.shortcut = index < 9 ? `Alt+${index + 1}` : null;
+        needsSave = true;
+      }
+    });
+
+    if (needsSave) {
+      await saveTabs();
+    }
+
     console.log('Loaded tabs:', tabs);
   } catch (error) {
     console.error('Error loading tabs:', error);
@@ -190,6 +214,14 @@ function switchToNextTab() {
 
   switchTab(tabs[nextIndex].id);
   scrollTabIntoView(tabs[nextIndex].id);
+}
+
+// Switch to tab by index (0-based, for Alt+1-9 shortcuts)
+function switchToTabByIndex(index) {
+  if (tabs.length === 0 || index < 0 || index >= tabs.length) return;
+
+  switchTab(tabs[index].id);
+  scrollTabIntoView(tabs[index].id);
 }
 
 // Scroll tab into view
@@ -589,10 +621,15 @@ function createWidgetElement(widget) {
 
 // Add new tab
 async function addTab(name) {
+  // Calculate default shortcut based on position (Alt+1, Alt+2, etc.)
+  const tabIndex = tabs.length;
+  const defaultShortcut = tabIndex < 9 ? `Alt+${tabIndex + 1}` : null;
+
   const newTab = {
     id: Date.now().toString(),
     name: name || `Tab ${tabs.length + 1}`,
-    widgets: []
+    widgets: [],
+    shortcut: defaultShortcut
   };
 
   tabs.push(newTab);
@@ -927,9 +964,10 @@ async function showSettingsModal() {
   modalOverlay.classList.remove('hidden');
   window.electronAPI.setModalState(true);
 
-  // Load current auto-launch status and shortcut
+  // Load current auto-launch status and shortcuts
   await loadAutoLaunchStatus();
   await loadShortcut();
+  await loadTabCycleShortcut();
 }
 
 // Hide settings modal
@@ -1107,6 +1145,145 @@ async function resetShortcut() {
   await setShortcut('CommandOrControl+Shift+Space');
 }
 
+// Load tab cycle shortcut
+async function loadTabCycleShortcut() {
+  try {
+    const shortcuts = await window.electronAPI.getTabShortcuts();
+    if (shortcuts) {
+      currentTabCycleShortcut = shortcuts.tabCycleShortcut || 'CommandOrControl+Tab';
+      updateTabCycleShortcutDisplay();
+    }
+  } catch (error) {
+    console.error('Error loading tab shortcuts:', error);
+  }
+}
+
+// Update tab cycle shortcut display
+function updateTabCycleShortcutDisplay() {
+  const displayShortcut = currentTabCycleShortcut.replace('CommandOrControl', 'Ctrl');
+  tabCycleShortcutInput.value = displayShortcut;
+}
+
+// Start recording tab cycle shortcut
+function startRecordingTabCycleShortcut() {
+  isRecordingTabCycleShortcut = true;
+  tabCycleShortcutInput.classList.add('recording');
+  tabCycleShortcutInput.value = 'Press your shortcut...';
+  tabCycleShortcutInput.focus();
+}
+
+// Stop recording tab cycle shortcut
+function stopRecordingTabCycleShortcut() {
+  isRecordingTabCycleShortcut = false;
+  tabCycleShortcutInput.classList.remove('recording');
+  updateTabCycleShortcutDisplay();
+}
+
+// Handle tab cycle shortcut key press
+function handleTabCycleShortcutKeyPress(e) {
+  if (!isRecordingTabCycleShortcut) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  // Check if this is just a modifier key being pressed
+  const key = e.key;
+  if (key === 'Control' || key === 'Meta' || key === 'Alt' || key === 'Shift') {
+    // Just a modifier key, don't register yet - show preview
+    const modifiers = [];
+    if (e.ctrlKey || e.metaKey) modifiers.push('Ctrl');
+    if (e.altKey) modifiers.push('Alt');
+    if (e.shiftKey) modifiers.push('Shift');
+    tabCycleShortcutInput.value = modifiers.join('+') + (modifiers.length > 0 ? '+...' : 'Press a key...');
+    return;
+  }
+
+  const keys = [];
+
+  // Add modifiers
+  if (e.ctrlKey || e.metaKey) keys.push('CommandOrControl');
+  if (e.altKey) keys.push('Alt');
+  if (e.shiftKey) keys.push('Shift');
+
+  // Add main key - normalize it
+  let normalizedKey = key;
+
+  // Special keys that need exact Electron format
+  if (key === ' ') {
+    normalizedKey = 'Space';
+  } else if (key === 'Enter' || key === 'Return') {
+    normalizedKey = 'Enter';
+  } else if (key === 'Escape') {
+    normalizedKey = 'Esc';
+  } else if (key === 'Backspace') {
+    normalizedKey = 'Backspace';
+  } else if (key === 'Delete') {
+    normalizedKey = 'Delete';
+  } else if (key === 'Insert') {
+    normalizedKey = 'Insert';
+  } else if (key === 'Home') {
+    normalizedKey = 'Home';
+  } else if (key === 'End') {
+    normalizedKey = 'End';
+  } else if (key === 'PageUp') {
+    normalizedKey = 'PageUp';
+  } else if (key === 'PageDown') {
+    normalizedKey = 'PageDown';
+  } else if (key === 'ArrowUp') {
+    normalizedKey = 'Up';
+  } else if (key === 'ArrowDown') {
+    normalizedKey = 'Down';
+  } else if (key === 'ArrowLeft') {
+    normalizedKey = 'Left';
+  } else if (key === 'ArrowRight') {
+    normalizedKey = 'Right';
+  } else if (key === 'Tab') {
+    normalizedKey = 'Tab';
+  } else if (key.startsWith('F') && key.length <= 3 && !isNaN(key.substring(1))) {
+    // F1-F12 keys
+    normalizedKey = key;
+  } else if (key.length === 1) {
+    // Regular character keys - uppercase for consistency
+    normalizedKey = key.toUpperCase();
+  } else {
+    // Use the key as-is for other cases
+    normalizedKey = key;
+  }
+
+  keys.push(normalizedKey);
+
+  // Need at least one modifier + one key
+  if (keys.length >= 2) {
+    const newShortcut = keys.join('+');
+    setTabCycleShortcut(newShortcut);
+  }
+}
+
+// Set new tab cycle shortcut
+async function setTabCycleShortcut(shortcut) {
+  try {
+    const result = await window.electronAPI.setTabShortcuts({
+      tabCycleShortcut: shortcut
+    });
+    if (result.success) {
+      currentTabCycleShortcut = shortcut;
+      console.log(`Tab cycle shortcut set to: ${shortcut}`);
+    } else {
+      alert(`Failed to set tab cycle shortcut: ${result.error || 'Unknown error'}`);
+    }
+  } catch (error) {
+    console.error('Error setting tab cycle shortcut:', error);
+    alert('Failed to set tab cycle shortcut');
+  } finally {
+    stopRecordingTabCycleShortcut();
+  }
+}
+
+// Reset tab cycle shortcut to default
+async function resetTabCycleShortcut() {
+  await setTabCycleShortcut('CommandOrControl+Tab');
+}
+
 // Backup configuration
 async function backupConfiguration() {
   try {
@@ -1205,6 +1382,9 @@ function handleContextMenuAction(action) {
         }
       }
       break;
+    case 'set-shortcut':
+      setTabShortcut(contextMenuTargetTabId);
+      break;
     case 'close':
       removeTab(contextMenuTargetTabId);
       break;
@@ -1235,6 +1415,23 @@ function setupEventListeners() {
   // Close settings modal
   closeSettingsModalBtn.addEventListener('click', hideSettingsModal);
 
+  // Settings tabs switching
+  settingsTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const targetTab = tab.dataset.tab;
+
+      // Update active tab button
+      settingsTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      // Update active content
+      document.querySelectorAll('.settings-tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      document.getElementById(`${targetTab}-tab`).classList.add('active');
+    });
+  });
+
   // Auto-launch toggle
   autoLaunchToggle.addEventListener('change', toggleAutoLaunch);
 
@@ -1253,6 +1450,22 @@ function setupEventListeners() {
 
   // Reset shortcut button
   resetShortcutBtn.addEventListener('click', resetShortcut);
+
+  // Tab cycle shortcut input - click to start recording
+  tabCycleShortcutInput.addEventListener('click', startRecordingTabCycleShortcut);
+
+  // Tab cycle shortcut input - handle key press
+  tabCycleShortcutInput.addEventListener('keydown', handleTabCycleShortcutKeyPress);
+
+  // Tab cycle shortcut input - blur to stop recording
+  tabCycleShortcutInput.addEventListener('blur', () => {
+    if (isRecordingTabCycleShortcut) {
+      stopRecordingTabCycleShortcut();
+    }
+  });
+
+  // Reset tab cycle shortcut button
+  resetTabCycleShortcutBtn.addEventListener('click', resetTabCycleShortcut);
 
   // Backup configuration button
   backupConfigBtn.addEventListener('click', backupConfiguration);

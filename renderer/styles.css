@@ -1106,8 +1106,10 @@ body.compact-mode .header.visible {
   opacity: 1;
   pointer-events: auto;
 
-  /* Blue border and lighting effect matching navigation mode aesthetic */
-  border: 2px solid #00a1ff;
+  /* Blue bottom border and lighting effect */
+  border-bottom: 3px solid #00a1ff;
+  left: 0;  /* Extend to full width */
+  right: 0;
   box-shadow:
     0 4px 20px rgba(0, 0, 0, 0.4),           /* Preserve depth shadow */
     0 0 20px rgba(0, 161, 255, 0.3),         /* Blue outer glow */

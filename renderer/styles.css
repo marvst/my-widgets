@@ -1087,7 +1087,9 @@ body.compact-mode .header {
   transform: translateY(-100%);
   opacity: 0;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 
   /* Enhanced styling for overlay appearance */
@@ -1103,6 +1105,13 @@ body.compact-mode .header.visible {
   transform: translateY(0);
   opacity: 1;
   pointer-events: auto;
+
+  /* Blue border and lighting effect matching navigation mode aesthetic */
+  border: 2px solid #00a1ff;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.4),           /* Preserve depth shadow */
+    0 0 20px rgba(0, 161, 255, 0.3),         /* Blue outer glow */
+    inset 0 0 30px rgba(0, 161, 255, 0.08);  /* Subtle inner lighting */
 }
 
 /* Darkening overlay on widgets when header is visible */

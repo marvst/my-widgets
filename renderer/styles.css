@@ -31,7 +31,7 @@ button, input, form, .widgets-container, .widget, .add-widget-panel {
   align-items: center;
   margin-bottom: 20px;
   padding: 15px;
-  background: rgba(255, 255, 255, 0.05);
+  /* background: rgba(255, 255, 255, 0.05); */
   border-radius: 10px;
   backdrop-filter: blur(10px);
   -webkit-app-region: drag;

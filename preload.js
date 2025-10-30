@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setModalState: (isOpen) => ipcRenderer.send('set-modal-state', isOpen),
   getAutoLaunchStatus: () => ipcRenderer.invoke('get-auto-launch-status'),
   setAutoLaunch: (enabled) => ipcRenderer.invoke('set-auto-launch', enabled),
+  getPrivacyMode: () => ipcRenderer.invoke('get-privacy-mode'),
+  setPrivacyMode: (enabled) => ipcRenderer.invoke('set-privacy-mode', enabled),
   getShortcut: () => ipcRenderer.invoke('get-shortcut'),
   setShortcut: (shortcut) => ipcRenderer.invoke('set-shortcut', shortcut),
   getTabShortcuts: () => ipcRenderer.invoke('get-tab-shortcuts'),

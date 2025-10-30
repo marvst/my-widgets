@@ -14,6 +14,7 @@ let autoLauncher;
 let currentShortcut = 'CommandOrControl+Shift+Space';
 let currentTabCycleShortcut = 'CommandOrControl+Tab';
 let tabsData = { tabs: [], currentTabId: null }; // Cache of tabs data for shortcut handling
+let privacyModeEnabled = true; // Default to enabled for security
 
 function createWindow() {
   // Get the display where the cursor is currently located
@@ -44,8 +45,8 @@ function createWindow() {
   // Set bounds to full screen immediately before loading
   mainWindow.setBounds({ x, y, width, height });
 
-  // Enable content protection to prevent the window from being captured in screen sharing
-  mainWindow.setContentProtection(true);
+  // Enable/disable content protection based on privacy mode setting
+  mainWindow.setContentProtection(privacyModeEnabled);
 
   mainWindow.loadFile('renderer/index.html');
 
@@ -457,6 +458,44 @@ ipcMain.handle('set-auto-launch', async (event, enabled) => {
   }
 });
 
+// IPC handlers for privacy mode
+ipcMain.handle('get-privacy-mode', async () => {
+  try {
+    return { success: true, enabled: privacyModeEnabled };
+  } catch (error) {
+    console.error('Error getting privacy mode:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('set-privacy-mode', async (event, enabled) => {
+  try {
+    privacyModeEnabled = enabled;
+
+    // Apply to the window immediately
+    if (mainWindow) {
+      mainWindow.setContentProtection(enabled);
+    }
+
+    // Save to settings file
+    let settings = {};
+    try {
+      const data = await fs.readFile(SETTINGS_PATH, 'utf8');
+      settings = JSON.parse(data);
+    } catch (error) {
+      // File doesn't exist, use empty object
+    }
+    settings.privacyMode = enabled;
+    await fs.writeFile(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+
+    console.log(`Privacy mode ${enabled ? 'enabled' : 'disabled'}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Error setting privacy mode:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Load shortcut from settings
 async function loadShortcut() {
   try {
@@ -470,9 +509,13 @@ async function loadShortcut() {
       currentTabCycleShortcut = settings.tabCycleShortcut;
       console.log('Loaded tab cycle shortcut:', currentTabCycleShortcut);
     }
+    if (settings.privacyMode !== undefined) {
+      privacyModeEnabled = settings.privacyMode;
+      console.log('Loaded privacy mode:', privacyModeEnabled);
+    }
   } catch (error) {
     // File doesn't exist or is invalid, use defaults
-    console.log('Using default shortcuts');
+    console.log('Using default shortcuts and settings');
   }
 }
 

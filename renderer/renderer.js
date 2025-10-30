@@ -17,6 +17,7 @@ const settingsBtn = document.getElementById('settings-btn');
 const settingsModal = document.getElementById('settings-modal');
 const closeSettingsModalBtn = document.getElementById('close-settings-modal');
 const autoLaunchToggle = document.getElementById('auto-launch-toggle');
+const privacyModeToggle = document.getElementById('privacy-mode-toggle');
 const tabContextMenu = document.getElementById('tab-context-menu');
 const shortcutInput = document.getElementById('shortcut-input');
 const resetShortcutBtn = document.getElementById('reset-shortcut-btn');
@@ -964,8 +965,9 @@ async function showSettingsModal() {
   modalOverlay.classList.remove('hidden');
   window.electronAPI.setModalState(true);
 
-  // Load current auto-launch status and shortcuts
+  // Load current auto-launch status, privacy mode, and shortcuts
   await loadAutoLaunchStatus();
+  await loadPrivacyModeStatus();
   await loadShortcut();
   await loadTabCycleShortcut();
 }
@@ -1004,6 +1006,36 @@ async function toggleAutoLaunch() {
   } catch (error) {
     console.error('Error toggling auto-launch:', error);
     autoLaunchToggle.checked = !autoLaunchToggle.checked;
+  }
+}
+
+// Load privacy mode status
+async function loadPrivacyModeStatus() {
+  try {
+    const result = await window.electronAPI.getPrivacyMode();
+    if (result.success) {
+      privacyModeToggle.checked = result.enabled;
+    }
+  } catch (error) {
+    console.error('Error loading privacy mode status:', error);
+  }
+}
+
+// Toggle privacy mode
+async function togglePrivacyMode() {
+  try {
+    const enabled = privacyModeToggle.checked;
+    const result = await window.electronAPI.setPrivacyMode(enabled);
+    if (result.success) {
+      console.log(`Privacy mode ${enabled ? 'enabled' : 'disabled'}`);
+    } else {
+      console.error('Failed to set privacy mode:', result.error);
+      // Revert toggle on error
+      privacyModeToggle.checked = !enabled;
+    }
+  } catch (error) {
+    console.error('Error toggling privacy mode:', error);
+    privacyModeToggle.checked = !privacyModeToggle.checked;
   }
 }
 
@@ -1434,6 +1466,9 @@ function setupEventListeners() {
 
   // Auto-launch toggle
   autoLaunchToggle.addEventListener('change', toggleAutoLaunch);
+
+  // Privacy mode toggle
+  privacyModeToggle.addEventListener('change', togglePrivacyMode);
 
   // Shortcut input - click to start recording
   shortcutInput.addEventListener('click', startRecordingShortcut);

@@ -44,6 +44,12 @@ let isRecordingTabCycleShortcut = false;
 let currentShortcut = 'CommandOrControl+Shift+Space';
 let currentTabCycleShortcut = 'CommandOrControl+Tab';
 
+// Compact mode header visibility state
+let headerVisibilityTimeout = null;
+const HEADER_HIDE_DELAY = 2000;  // 2 seconds
+const HEADER_TAB_SWITCH_DELAY = 3000;  // 3 seconds on tab switch
+const HEADER_HOVER_THRESHOLD = 80;  // pixels from top
+
 // Initialize
 async function init() {
   await loadTabs();
@@ -208,6 +214,11 @@ function switchTab(tabId) {
   renderTabs();
   renderWidgets();
   saveTabs();
+
+  // Show header temporarily when switching tabs in compact mode
+  if (document.body.classList.contains('compact-mode')) {
+    showHeaderTemporarily(HEADER_TAB_SWITCH_DELAY);
+  }
 }
 
 // Switch to next tab (with wrapping)
@@ -1057,13 +1068,89 @@ async function loadCompactModeStatus() {
   }
 }
 
-// Apply compact mode styling
+// Apply compact mode styling and setup hover detection
 function applyCompactMode(enabled) {
+  const header = document.querySelector('.header');
+
   if (enabled) {
     document.body.classList.add('compact-mode');
+    setupCompactModeHover();
+
+    // Show header for 3 seconds initially when enabling
+    showHeaderTemporarily(3000);
   } else {
     document.body.classList.remove('compact-mode');
+    cleanupCompactModeHover();
+
+    // Ensure header is visible in normal mode
+    if (header) {
+      header.classList.remove('visible');
+    }
   }
+}
+
+// Header visibility management functions
+function showHeader() {
+  const header = document.querySelector('.header');
+  if (!header) return;
+  header.classList.add('visible');
+  clearTimeout(headerVisibilityTimeout);
+}
+
+function hideHeader() {
+  const header = document.querySelector('.header');
+  if (!header) return;
+  header.classList.remove('visible');
+}
+
+function scheduleHeaderHide(delay = HEADER_HIDE_DELAY) {
+  clearTimeout(headerVisibilityTimeout);
+  headerVisibilityTimeout = setTimeout(() => {
+    hideHeader();
+  }, delay);
+}
+
+function showHeaderTemporarily(duration) {
+  showHeader();
+  scheduleHeaderHide(duration);
+}
+
+// Hover detection setup for compact mode
+function setupCompactModeHover() {
+  const body = document.body;
+  const header = document.querySelector('.header');
+
+  if (!body.classList.contains('compact-mode')) return;
+
+  // Mouse position tracking for top-edge detection
+  body.addEventListener('mousemove', handleCompactModeMouseMove);
+
+  // Keep header visible while hovering over it
+  header.addEventListener('mouseenter', () => {
+    if (!body.classList.contains('compact-mode')) return;
+    showHeader();
+  });
+
+  header.addEventListener('mouseleave', () => {
+    if (!body.classList.contains('compact-mode')) return;
+    scheduleHeaderHide();
+  });
+}
+
+function handleCompactModeMouseMove(e) {
+  if (!document.body.classList.contains('compact-mode')) return;
+
+  if (e.clientY < HEADER_HOVER_THRESHOLD) {
+    showHeader();
+  } else if (e.clientY > 150) {
+    // Larger threshold to prevent flickering
+    scheduleHeaderHide();
+  }
+}
+
+function cleanupCompactModeHover() {
+  document.body.removeEventListener('mousemove', handleCompactModeMouseMove);
+  clearTimeout(headerVisibilityTimeout);
 }
 
 // Toggle compact mode

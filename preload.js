@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setAutoLaunch: (enabled) => ipcRenderer.invoke('set-auto-launch', enabled),
   getPrivacyMode: () => ipcRenderer.invoke('get-privacy-mode'),
   setPrivacyMode: (enabled) => ipcRenderer.invoke('set-privacy-mode', enabled),
+  getCompactMode: () => ipcRenderer.invoke('get-compact-mode'),
+  setCompactMode: (enabled) => ipcRenderer.invoke('set-compact-mode', enabled),
   getShortcut: () => ipcRenderer.invoke('get-shortcut'),
   setShortcut: (shortcut) => ipcRenderer.invoke('set-shortcut', shortcut),
   getTabShortcuts: () => ipcRenderer.invoke('get-tab-shortcuts'),

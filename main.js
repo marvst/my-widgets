@@ -15,6 +15,7 @@ let currentShortcut = 'CommandOrControl+Shift+Space';
 let currentTabCycleShortcut = 'CommandOrControl+Tab';
 let tabsData = { tabs: [], currentTabId: null }; // Cache of tabs data for shortcut handling
 let privacyModeEnabled = true; // Default to enabled for security
+let compactMode = false; // Default to disabled for normal spacing
 
 function createWindow() {
   // Get the display where the cursor is currently located
@@ -496,6 +497,39 @@ ipcMain.handle('set-privacy-mode', async (event, enabled) => {
   }
 });
 
+// IPC handlers for compact mode
+ipcMain.handle('get-compact-mode', async () => {
+  try {
+    return { success: true, enabled: compactMode };
+  } catch (error) {
+    console.error('Error getting compact mode:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('set-compact-mode', async (event, enabled) => {
+  try {
+    compactMode = enabled;
+
+    // Save to settings file
+    let settings = {};
+    try {
+      const data = await fs.readFile(SETTINGS_PATH, 'utf8');
+      settings = JSON.parse(data);
+    } catch (error) {
+      // File doesn't exist, use empty object
+    }
+    settings.compactMode = enabled;
+    await fs.writeFile(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+
+    console.log(`Compact mode ${enabled ? 'enabled' : 'disabled'}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Error setting compact mode:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Load shortcut from settings
 async function loadShortcut() {
   try {
@@ -512,6 +546,10 @@ async function loadShortcut() {
     if (settings.privacyMode !== undefined) {
       privacyModeEnabled = settings.privacyMode;
       console.log('Loaded privacy mode:', privacyModeEnabled);
+    }
+    if (settings.compactMode !== undefined) {
+      compactMode = settings.compactMode;
+      console.log('Loaded compact mode:', compactMode);
     }
   } catch (error) {
     // File doesn't exist or is invalid, use defaults

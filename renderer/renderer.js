@@ -18,6 +18,7 @@ const settingsModal = document.getElementById('settings-modal');
 const closeSettingsModalBtn = document.getElementById('close-settings-modal');
 const autoLaunchToggle = document.getElementById('auto-launch-toggle');
 const privacyModeToggle = document.getElementById('privacy-mode-toggle');
+const compactModeToggle = document.getElementById('compact-mode-toggle');
 const tabContextMenu = document.getElementById('tab-context-menu');
 const shortcutInput = document.getElementById('shortcut-input');
 const resetShortcutBtn = document.getElementById('reset-shortcut-btn');
@@ -47,6 +48,9 @@ let currentTabCycleShortcut = 'CommandOrControl+Tab';
 async function init() {
   await loadTabs();
   renderTabs();
+
+  // Load and apply compact mode preference
+  await loadCompactModeStatus();
 
   // If no tabs exist, create a default one
   if (tabs.length === 0) {
@@ -965,9 +969,10 @@ async function showSettingsModal() {
   modalOverlay.classList.remove('hidden');
   window.electronAPI.setModalState(true);
 
-  // Load current auto-launch status, privacy mode, and shortcuts
+  // Load current auto-launch status, privacy mode, compact mode, and shortcuts
   await loadAutoLaunchStatus();
   await loadPrivacyModeStatus();
+  await loadCompactModeStatus();
   await loadShortcut();
   await loadTabCycleShortcut();
 }
@@ -1036,6 +1041,49 @@ async function togglePrivacyMode() {
   } catch (error) {
     console.error('Error toggling privacy mode:', error);
     privacyModeToggle.checked = !privacyModeToggle.checked;
+  }
+}
+
+// Load compact mode status
+async function loadCompactModeStatus() {
+  try {
+    const result = await window.electronAPI.getCompactMode();
+    if (result.success) {
+      compactModeToggle.checked = result.enabled;
+      applyCompactMode(result.enabled);
+    }
+  } catch (error) {
+    console.error('Error loading compact mode status:', error);
+  }
+}
+
+// Apply compact mode styling
+function applyCompactMode(enabled) {
+  if (enabled) {
+    document.body.classList.add('compact-mode');
+  } else {
+    document.body.classList.remove('compact-mode');
+  }
+}
+
+// Toggle compact mode
+async function toggleCompactMode() {
+  try {
+    const enabled = compactModeToggle.checked;
+    applyCompactMode(enabled);
+    const result = await window.electronAPI.setCompactMode(enabled);
+    if (result.success) {
+      console.log(`Compact mode ${enabled ? 'enabled' : 'disabled'}`);
+    } else {
+      console.error('Failed to set compact mode:', result.error);
+      // Revert toggle on error
+      compactModeToggle.checked = !enabled;
+      applyCompactMode(!enabled);
+    }
+  } catch (error) {
+    console.error('Error toggling compact mode:', error);
+    compactModeToggle.checked = !compactModeToggle.checked;
+    applyCompactMode(!compactModeToggle.checked);
   }
 }
 
@@ -1469,6 +1517,9 @@ function setupEventListeners() {
 
   // Privacy mode toggle
   privacyModeToggle.addEventListener('change', togglePrivacyMode);
+
+  // Compact mode toggle
+  compactModeToggle.addEventListener('change', toggleCompactMode);
 
   // Shortcut input - click to start recording
   shortcutInput.addEventListener('click', startRecordingShortcut);

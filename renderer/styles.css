@@ -1059,3 +1059,100 @@ button {
   color: #a0a0a0;
   line-height: 1.4;
 }
+
+/* Compact Mode - Balanced Spacing Reduction */
+body.compact-mode {
+  padding: 12px;
+  height: 100vh;
+}
+
+body.compact-mode .header {
+  margin-bottom: 15px;
+  padding: 10px;
+  gap: 12px;
+}
+
+body.compact-mode .header-left {
+  gap: 12px;
+}
+
+body.compact-mode .tab {
+  padding: 6px 12px;
+  font-size: 12px;
+  gap: 6px;
+}
+
+body.compact-mode .tabs-list {
+  gap: 3px;
+}
+
+body.compact-mode .tab-close {
+  width: 14px;
+  height: 14px;
+  font-size: 12px;
+}
+
+body.compact-mode button {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+body.compact-mode .controls {
+  gap: 8px;
+}
+
+body.compact-mode .widgets-container {
+  gap: 14px;
+  height: calc(100vh - 100px);
+  max-height: calc(100vh - 100px);
+}
+
+body.compact-mode .widget-header {
+  padding: 6px 10px;
+  gap: 10px;
+  min-height: 36px;
+}
+
+body.compact-mode .widget-title {
+  font-size: 12px;
+}
+
+body.compact-mode .nav-controls {
+  margin-left: 8px;
+  gap: 4px;
+}
+
+body.compact-mode .nav-btn {
+  padding: 3px 8px;
+  font-size: 12px;
+  min-width: 28px;
+}
+
+body.compact-mode .nav-btn i {
+  font-size: 12px;
+}
+
+body.compact-mode .size-selector {
+  padding: 3px 6px;
+  font-size: 10px;
+  min-width: 60px;
+}
+
+body.compact-mode .resize-controls {
+  gap: 4px;
+}
+
+body.compact-mode .widget-actions {
+  gap: 6px;
+}
+
+body.compact-mode .btn-edit,
+body.compact-mode .btn-danger,
+body.compact-mode .btn-auto-focus {
+  padding: 4px 10px;
+  font-size: 10px;
+}
+
+body.compact-mode .widget-title-container {
+  gap: 6px;
+}

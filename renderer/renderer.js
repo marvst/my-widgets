@@ -50,6 +50,9 @@ const HEADER_HIDE_DELAY = 2000;  // 2 seconds
 const HEADER_TAB_SWITCH_DELAY = 3000;  // 3 seconds on tab switch
 const HEADER_HOVER_THRESHOLD = 80;  // pixels from top
 
+// Track modal state locally for header behavior
+let isModalOpenLocal = false;
+
 // Initialize
 async function init() {
   await loadTabs();
@@ -838,6 +841,7 @@ async function toggleAutoFocus(widgetId) {
 
 // Show edit widget modal
 function showEditWidgetModal(widgetId) {
+  isModalOpenLocal = true;
   const currentTab = tabs.find(t => t.id === currentTabId);
   if (!currentTab) return;
 
@@ -872,6 +876,7 @@ function showEditWidgetModal(widgetId) {
 
 // Hide edit widget modal
 function hideEditWidgetModal() {
+  isModalOpenLocal = false;
   editWidgetModal.classList.add('hidden');
   modalOverlay.classList.add('hidden');
   editWidgetForm.reset();
@@ -947,6 +952,7 @@ async function updateWidget(widgetId, newName, newUrl, navigationMode) {
 
 // Show modal
 function showModal() {
+  isModalOpenLocal = true;
   addWidgetModal.classList.remove('hidden');
   settingsModal.classList.add('hidden');
   editWidgetModal.classList.add('hidden');
@@ -963,6 +969,7 @@ function showModal() {
 
 // Hide modal
 function hideModal() {
+  isModalOpenLocal = false;
   modalOverlay.classList.add('hidden');
   addWidgetModal.classList.add('hidden');
   settingsModal.classList.add('hidden');
@@ -974,6 +981,7 @@ function hideModal() {
 
 // Show settings modal
 async function showSettingsModal() {
+  isModalOpenLocal = true;
   addWidgetModal.classList.add('hidden');
   editWidgetModal.classList.add('hidden');
   settingsModal.classList.remove('hidden');
@@ -990,6 +998,7 @@ async function showSettingsModal() {
 
 // Hide settings modal
 function hideSettingsModal() {
+  isModalOpenLocal = false;
   settingsModal.classList.add('hidden');
   modalOverlay.classList.add('hidden');
   window.electronAPI.setModalState(false);
@@ -1140,6 +1149,26 @@ function setupCompactModeHover() {
 function handleCompactModeMouseMove(e) {
   if (!document.body.classList.contains('compact-mode')) return;
 
+  // Suppress header when modal is open
+  if (isModalOpenLocal) {
+    hideHeader();
+    return;
+  }
+
+  // Check if hovering over a widget (not header)
+  const hoveredElement = document.elementFromPoint(e.clientX, e.clientY);
+  if (hoveredElement) {
+    const widgetElement = hoveredElement.closest('.widget');
+    const headerElement = hoveredElement.closest('.header');
+
+    if (widgetElement && !headerElement) {
+      // User is interacting with widget - suppress header
+      scheduleHeaderHide();
+      return;
+    }
+  }
+
+  // Original header appearance logic
   if (e.clientY < HEADER_HOVER_THRESHOLD) {
     showHeader();
   } else if (e.clientY > 150) {

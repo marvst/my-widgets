@@ -181,14 +181,10 @@ function createWindow() {
 
   // Show window only after content is loaded
   mainWindow.once('ready-to-show', () => {
-    // Ensure full screen size and show instantly
+    // Ensure full screen size
     mainWindow.setBounds({ x, y, width, height });
-    mainWindow.setOpacity(0); // Keep invisible while initializing
-    mainWindow.show();
-    // Make visible after 3 seconds to allow rendering to complete
-    setTimeout(() => {
-      mainWindow.setOpacity(1);
-    }, 3000);
+    // Show with 3-second delay to eliminate rendering glitches
+    showWindowWithDelay();
   });
 
   // Open DevTools in development
@@ -243,6 +239,15 @@ function createWindow() {
   });
 }
 
+// Show window with 3-second opacity delay to eliminate rendering glitches
+function showWindowWithDelay() {
+  mainWindow.setOpacity(0);
+  mainWindow.show();
+  setTimeout(() => {
+    mainWindow.setOpacity(1);
+  }, 3000);
+}
+
 // Toggle window visibility
 function toggleWindow() {
   if (mainWindow) {
@@ -256,13 +261,9 @@ function toggleWindow() {
 
       // Set bounds before showing
       mainWindow.setBounds({ x, y, width, height });
-      mainWindow.setOpacity(0); // Keep invisible while initializing
-      mainWindow.show();
       mainWindow.focus();
-      // Make visible after 3 seconds to allow rendering to complete
-      setTimeout(() => {
-        mainWindow.setOpacity(1);
-      }, 3000);
+      // Show with 3-second delay to eliminate rendering glitches
+      showWindowWithDelay();
     }
   }
 }

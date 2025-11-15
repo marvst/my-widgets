@@ -48,7 +48,7 @@ let currentTabCycleShortcut = 'CommandOrControl+Tab';
 let headerVisibilityTimeout = null;
 const HEADER_HIDE_DELAY = 300;  // 300ms - matches show animation time
 const HEADER_TAB_SWITCH_DELAY = 300;  // 300ms - matches show animation time
-const HEADER_HOVER_THRESHOLD = 80;  // pixels from top
+const HEADER_HOVER_THRESHOLD = 5;  // pixels from top
 
 // Track modal state locally for header behavior
 let isModalOpenLocal = false;

@@ -385,36 +385,103 @@ function createWidgetElement(widget) {
   navControls.appendChild(forwardBtn);
   navControls.appendChild(refreshBtn);
 
-  const actions = document.createElement('div');
-  actions.className = 'widget-actions';
+  // Create cog menu button
+  const menuButton = document.createElement('button');
+  menuButton.className = 'widget-menu-btn';
+  menuButton.innerHTML = '<i class="fa-solid fa-cog"></i>';
+  menuButton.title = 'Widget menu';
+  menuButton.setAttribute('aria-label', 'Widget menu');
 
-  // Edit button
-  const editBtn = document.createElement('button');
-  editBtn.className = 'btn-edit';
-  editBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Edit';
-  editBtn.title = 'Edit widget name and URL';
-  editBtn.onclick = () => showEditWidgetModal(widget.id);
+  // Create menu dropdown
+  const menuDropdown = document.createElement('div');
+  menuDropdown.className = 'widget-menu-dropdown hidden';
 
-  // Auto-focus toggle button
-  const autoFocusBtn = document.createElement('button');
-  autoFocusBtn.className = widget.autoFocus ? 'btn-auto-focus active' : 'btn-auto-focus';
-  autoFocusBtn.innerHTML = widget.autoFocus ? '<i class="fa-solid fa-star"></i> Auto' : '<i class="fa-regular fa-star"></i> Auto';
-  autoFocusBtn.title = widget.autoFocus ? 'Auto-focus enabled' : 'Enable auto-focus on tab open';
-  autoFocusBtn.onclick = async () => {
-    await toggleAutoFocus(widget.id);
+  // Edit menu item
+  const editMenuItem = document.createElement('div');
+  editMenuItem.className = 'widget-menu-item';
+  editMenuItem.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Edit';
+  editMenuItem.title = 'Edit widget name and URL';
+  editMenuItem.onclick = (e) => {
+    e.stopPropagation();
+    showEditWidgetModal(widget.id);
+    closeWidgetMenu(menuDropdown);
   };
 
-  const removeBtn = document.createElement('button');
-  removeBtn.className = 'btn-danger';
-  removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i> Remove';
-  removeBtn.onclick = () => removeWidget(widget.id);
+  // Auto-focus menu item
+  const autoFocusMenuItem = document.createElement('div');
+  autoFocusMenuItem.className = 'widget-menu-item widget-auto-focus-item';
+  const autoFocusIcon = widget.autoFocus ? '<i class="fa-solid fa-star"></i>' : '<i class="fa-regular fa-star"></i>';
+  const autoFocusText = widget.autoFocus ? 'Auto-focus (enabled)' : 'Auto-focus (disabled)';
+  autoFocusMenuItem.innerHTML = autoFocusIcon + ' ' + autoFocusText;
+  autoFocusMenuItem.title = widget.autoFocus ? 'Auto-focus is enabled' : 'Enable auto-focus on tab open';
+  if (widget.autoFocus) autoFocusMenuItem.classList.add('active');
+  autoFocusMenuItem.onclick = async (e) => {
+    e.stopPropagation();
+    await toggleAutoFocus(widget.id);
+    // Update the menu to reflect the new state
+    const currentTab = tabs.find(t => t.id === currentTabId);
+    if (currentTab) {
+      const widgetData = currentTab.widgets.find(w => w.id === widget.id);
+      if (widgetData) {
+        const newIcon = widgetData.autoFocus ? '<i class="fa-solid fa-star"></i>' : '<i class="fa-regular fa-star"></i>';
+        const newText = widgetData.autoFocus ? 'Auto-focus (enabled)' : 'Auto-focus (disabled)';
+        autoFocusMenuItem.innerHTML = newIcon + ' ' + newText;
+        if (widgetData.autoFocus) {
+          autoFocusMenuItem.classList.add('active');
+        } else {
+          autoFocusMenuItem.classList.remove('active');
+        }
+      }
+    }
+  };
 
-  actions.appendChild(editBtn);
-  actions.appendChild(autoFocusBtn);
-  actions.appendChild(removeBtn);
+  // Remove menu item
+  const removeMenuItem = document.createElement('div');
+  removeMenuItem.className = 'widget-menu-item widget-menu-item-danger';
+  removeMenuItem.innerHTML = '<i class="fa-solid fa-trash"></i> Remove';
+  removeMenuItem.title = 'Remove this widget';
+  removeMenuItem.onclick = (e) => {
+    e.stopPropagation();
+    removeWidget(widget.id);
+    closeWidgetMenu(menuDropdown);
+  };
+
+  // Build the dropdown menu
+  menuDropdown.appendChild(editMenuItem);
+  menuDropdown.appendChild(autoFocusMenuItem);
+
+  // Create wrapper for menu button and dropdown
+  const actions = document.createElement('div');
+  actions.className = 'widget-actions';
+  actions.appendChild(menuButton);
+  actions.appendChild(menuDropdown);
+
+  // Toggle menu on button click
+  menuButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleWidgetMenu(menuDropdown);
+  });
+
+  // Close menu when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!menuDropdown.classList.contains('hidden') &&
+        !menuDropdown.contains(e.target) &&
+        !menuButton.contains(e.target)) {
+      closeWidgetMenu(menuDropdown);
+    }
+  });
+
+  // Create a wrapper for nav controls and actions to keep them together on the right
+  const controlsWrapper = document.createElement('div');
+  controlsWrapper.style.display = 'flex';
+  controlsWrapper.style.alignItems = 'center';
+  controlsWrapper.style.marginLeft = 'auto';
+  controlsWrapper.style.gap = '8px';
+  controlsWrapper.appendChild(navControls);
+  controlsWrapper.appendChild(actions);
 
   header.appendChild(titleContainer);
-  header.appendChild(navControls);
+  header.appendChild(controlsWrapper);
 
   // Create widget content
   const content = document.createElement('div');
@@ -432,40 +499,24 @@ function createWidgetElement(widget) {
   widgetDiv.style.gridColumn = `span ${columnSpan}`;
   widgetDiv.style.gridRow = `span ${rowSpan}`;
 
-  // Create resize controls container
-  const resizeControls = document.createElement('div');
-  resizeControls.className = 'resize-controls';
+  // Create width menu item
+  const widthMenuItem = document.createElement('div');
+  widthMenuItem.className = 'widget-menu-item widget-menu-size-item';
+  widthMenuItem.innerHTML = '<i class="fa-solid fa-arrows-left-right"></i> Width:';
 
-  // Create width selector
   const widthSelector = document.createElement('select');
-  widthSelector.className = 'size-selector';
+  widthSelector.className = 'menu-size-selector';
   widthSelector.title = 'Select width';
 
   const widthOptions = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
   widthOptions.forEach(percent => {
     const option = document.createElement('option');
     option.value = percent;
-    option.textContent = `W:${percent}%`;
+    option.textContent = `${percent}%`;
     if (percent === widthPercent) {
       option.selected = true;
     }
     widthSelector.appendChild(option);
-  });
-
-  // Create height selector
-  const heightSelector = document.createElement('select');
-  heightSelector.className = 'size-selector';
-  heightSelector.title = 'Select height';
-
-  const heightOptions = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-  heightOptions.forEach(percent => {
-    const option = document.createElement('option');
-    option.value = percent;
-    option.textContent = `H:${percent}%`;
-    if (percent === heightPercent) {
-      option.selected = true;
-    }
-    heightSelector.appendChild(option);
   });
 
   // Handle width change
@@ -496,6 +547,29 @@ function createWidgetElement(widget) {
     }
   });
 
+  widthMenuItem.appendChild(widthSelector);
+  widthMenuItem.onclick = (e) => e.stopPropagation();
+
+  // Create height menu item
+  const heightMenuItem = document.createElement('div');
+  heightMenuItem.className = 'widget-menu-item widget-menu-size-item';
+  heightMenuItem.innerHTML = '<i class="fa-solid fa-arrows-up-down"></i> Height:';
+
+  const heightSelector = document.createElement('select');
+  heightSelector.className = 'menu-size-selector';
+  heightSelector.title = 'Select height';
+
+  const heightOptions = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  heightOptions.forEach(percent => {
+    const option = document.createElement('option');
+    option.value = percent;
+    option.textContent = `${percent}%`;
+    if (percent === heightPercent) {
+      option.selected = true;
+    }
+    heightSelector.appendChild(option);
+  });
+
   // Handle height change
   heightSelector.addEventListener('change', async (e) => {
     const newHeightPercent = parseInt(e.target.value);
@@ -524,12 +598,13 @@ function createWidgetElement(widget) {
     }
   });
 
-  resizeControls.appendChild(widthSelector);
-  resizeControls.appendChild(heightSelector);
+  heightMenuItem.appendChild(heightSelector);
+  heightMenuItem.onclick = (e) => e.stopPropagation();
 
-  // Append resize controls and actions to header
-  header.appendChild(resizeControls);
-  header.appendChild(actions);
+  // Add size items to menu dropdown
+  menuDropdown.appendChild(widthMenuItem);
+  menuDropdown.appendChild(heightMenuItem);
+  menuDropdown.appendChild(removeMenuItem);
 
   // Create webview for the website
   const webview = document.createElement('webview');
@@ -1752,6 +1827,15 @@ function setupEventListeners() {
       hideTabContextMenu();
     }
   });
+}
+
+// Widget menu helper functions
+function toggleWidgetMenu(menuDropdown) {
+  menuDropdown.classList.toggle('hidden');
+}
+
+function closeWidgetMenu(menuDropdown) {
+  menuDropdown.classList.add('hidden');
 }
 
 // Start the app

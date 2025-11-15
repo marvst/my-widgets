@@ -183,7 +183,12 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     // Ensure full screen size and show instantly
     mainWindow.setBounds({ x, y, width, height });
+    mainWindow.setOpacity(0); // Keep invisible while initializing
     mainWindow.show();
+    // Make visible after 3 seconds to allow rendering to complete
+    setTimeout(() => {
+      mainWindow.setOpacity(1);
+    }, 3000);
   });
 
   // Open DevTools in development
@@ -251,8 +256,13 @@ function toggleWindow() {
 
       // Set bounds before showing
       mainWindow.setBounds({ x, y, width, height });
+      mainWindow.setOpacity(0); // Keep invisible while initializing
       mainWindow.show();
       mainWindow.focus();
+      // Make visible after 3 seconds to allow rendering to complete
+      setTimeout(() => {
+        mainWindow.setOpacity(1);
+      }, 3000);
     }
   }
 }

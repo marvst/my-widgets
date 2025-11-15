@@ -185,7 +185,6 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     // Ensure full screen size and show instantly
     mainWindow.setBounds({ x, y, width, height });
-    mainWindow.setOpacity(1); // Show at full opacity immediately
     mainWindow.show();
   });
 
@@ -284,7 +283,6 @@ function toggleWindow() {
 
       // Set bounds before showing to prevent resize animation
       mainWindow.setBounds({ x, y, width, height });
-      mainWindow.setOpacity(1); // Show at full opacity instantly
       mainWindow.show();
       mainWindow.focus();
     }

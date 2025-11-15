@@ -66,11 +66,11 @@
     }
   },
   "devDependencies": {
-    "electron": "^38.2.2",
     "electron-builder": "^26.0.12",
     "electron-packager": "^17.1.2"
   },
   "dependencies": {
-    "auto-launch": "^5.0.6"
+    "auto-launch": "^5.0.6",
+    "electron": "38.2.2"
   }
 }

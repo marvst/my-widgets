@@ -21,7 +21,7 @@ function createWindow() {
   // Get the display where the cursor is currently located
   const cursorPoint = screen.getCursorScreenPoint();
   const activeDisplay = screen.getDisplayNearestPoint(cursorPoint);
-  const { x, y, width, height } = activeDisplay.workArea;
+  const { x, y, width, height } = activeDisplay.bounds;
 
   mainWindow = new BrowserWindow({
     width: width,
@@ -43,7 +43,7 @@ function createWindow() {
     }
   });
 
-  // Set bounds to full screen immediately before loading
+  // Set bounds to full screen immediately before loading (will cover taskbar)
   mainWindow.setBounds({ x, y, width, height });
 
   // Enable/disable content protection based on privacy mode setting
@@ -257,13 +257,16 @@ function toggleWindow() {
       // Move window to the screen where the cursor is currently located
       const cursorPoint = screen.getCursorScreenPoint();
       const activeDisplay = screen.getDisplayNearestPoint(cursorPoint);
-      const { x, y, width, height } = activeDisplay.workArea;
+      const { x, y, width, height } = activeDisplay.bounds;
 
       // Set bounds before showing
       mainWindow.setBounds({ x, y, width, height });
-      mainWindow.focus();
-      // Show with 3-second delay to eliminate rendering glitches
+      // Ensure window is always on top
+      mainWindow.setAlwaysOnTop(true);
+      // Show with delay to eliminate rendering glitches
       showWindowWithDelay();
+      // Focus after showing
+      mainWindow.focus();
     }
   }
 }

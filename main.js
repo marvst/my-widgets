@@ -183,11 +183,10 @@ function createWindow() {
 
   // Show window only after content is loaded
   mainWindow.once('ready-to-show', () => {
-    // Ensure full screen size and show without animation
+    // Ensure full screen size and show instantly
     mainWindow.setBounds({ x, y, width, height });
-    mainWindow.setOpacity(0); // Start invisible to prevent flash
+    mainWindow.setOpacity(1); // Show at full opacity immediately
     mainWindow.show();
-    fadeInWindow(); // Fade in smoothly on first show
   });
 
   // Open DevTools in development
@@ -248,27 +247,6 @@ function createWindow() {
   });
 }
 
-// Fade in animation for window
-function fadeInWindow() {
-  if (!mainWindow) return;
-
-  const steps = 5; // Number of animation steps
-  const duration = 50; // Total duration in ms
-  const interval = duration / steps;
-  let currentStep = 0;
-
-  const fadeInterval = setInterval(() => {
-    currentStep++;
-    const opacity = currentStep / steps;
-    mainWindow.setOpacity(opacity);
-
-    if (currentStep >= steps) {
-      clearInterval(fadeInterval);
-      mainWindow.setOpacity(1);
-    }
-  }, interval);
-}
-
 // Fade out animation for window
 function fadeOutWindow(callback) {
   if (!mainWindow) return;
@@ -306,12 +284,9 @@ function toggleWindow() {
 
       // Set bounds before showing to prevent resize animation
       mainWindow.setBounds({ x, y, width, height });
-      mainWindow.setOpacity(0); // Set opacity to 0 BEFORE showing to prevent flash
+      mainWindow.setOpacity(1); // Show at full opacity instantly
       mainWindow.show();
       mainWindow.focus();
-
-      // Fade in the window
-      fadeInWindow();
     }
   }
 }

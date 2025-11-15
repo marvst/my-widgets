@@ -865,11 +865,9 @@ function showEditWidgetModal(widgetId) {
   editWidgetModal.classList.remove('hidden');
   modalOverlay.classList.remove('hidden');
 
-  // Wait for animation to complete before focusing
-  modalOverlay.addEventListener('animationend', () => {
-    window.electronAPI.setModalState(true);
-    document.getElementById('edit-widget-name').focus();
-  }, { once: true });
+  // Focus immediately (no animation delay)
+  window.electronAPI.setModalState(true);
+  document.getElementById('edit-widget-name').focus();
 }
 
 // Hide edit widget modal
@@ -956,13 +954,9 @@ function showModal() {
   editWidgetModal.classList.add('hidden');
   modalOverlay.classList.remove('hidden');
 
-  // Wait for animation to complete before focusing
-  modalOverlay.addEventListener('animationend', () => {
-    // Notify main process that modal is open
-    window.electronAPI.setModalState(true);
-    // Focus on first input field
-    document.getElementById('widget-name').focus();
-  }, { once: true });
+  // Focus immediately (no animation delay)
+  window.electronAPI.setModalState(true);
+  document.getElementById('widget-name').focus();
 }
 
 // Hide modal

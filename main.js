@@ -156,9 +156,7 @@ function createWindow() {
           input.shift &&
           (input.control || input.meta)) {
         event.preventDefault();
-        fadeOutWindow(() => {
-          mainWindow.hide();
-        });
+        mainWindow.hide();
       }
 
       // Forward tab cycle shortcut (Ctrl+Tab by default)
@@ -185,7 +183,6 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     // Ensure full screen size and show instantly
     mainWindow.setBounds({ x, y, width, height });
-    mainWindow.setOpacity(1);
     mainWindow.show();
   });
 
@@ -197,9 +194,7 @@ function createWindow() {
     // Handle ESC key to hide window
     if (input.key === 'Escape' && input.type === 'keyDown') {
       event.preventDefault();
-      fadeOutWindow(() => {
-        mainWindow.hide();
-      });
+      mainWindow.hide();
     }
 
     // Handle tab cycle shortcut (Ctrl+Tab by default)
@@ -226,9 +221,7 @@ function createWindow() {
         input.shift &&
         (input.control || input.meta)) {
       event.preventDefault();
-      fadeOutWindow(() => {
-        mainWindow.hide();
-      });
+      mainWindow.hide();
     }
   });
 
@@ -236,9 +229,7 @@ function createWindow() {
   mainWindow.on('close', (event) => {
     if (!app.isQuitting) {
       event.preventDefault();
-      fadeOutWindow(() => {
-        mainWindow.hide();
-      });
+      mainWindow.hide();
     }
   });
 
@@ -247,44 +238,19 @@ function createWindow() {
   });
 }
 
-// Fade out animation for window
-function fadeOutWindow(callback) {
-  if (!mainWindow) return;
-
-  const steps = 5; // Number of animation steps
-  const duration = 50; // Total duration in ms
-  const interval = duration / steps;
-  let currentStep = steps;
-
-  const fadeInterval = setInterval(() => {
-    currentStep--;
-    const opacity = currentStep / steps;
-    mainWindow.setOpacity(opacity);
-
-    if (currentStep <= 0) {
-      clearInterval(fadeInterval);
-      mainWindow.setOpacity(0);
-      if (callback) callback();
-    }
-  }, interval);
-}
-
 // Toggle window visibility
 function toggleWindow() {
   if (mainWindow) {
     if (mainWindow.isVisible()) {
-      fadeOutWindow(() => {
-        mainWindow.hide();
-      });
+      mainWindow.hide();
     } else {
       // Move window to the screen where the cursor is currently located
       const cursorPoint = screen.getCursorScreenPoint();
       const activeDisplay = screen.getDisplayNearestPoint(cursorPoint);
       const { x, y, width, height } = activeDisplay.workArea;
 
-      // Set bounds and opacity before showing to prevent glitch
+      // Set bounds before showing
       mainWindow.setBounds({ x, y, width, height });
-      mainWindow.setOpacity(1);
       mainWindow.show();
       mainWindow.focus();
     }

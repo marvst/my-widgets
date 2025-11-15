@@ -31,7 +31,7 @@ function createWindow() {
     frame: false,
     transparent: true,
     alwaysOnTop: true,
-    resizable: true,
+    resizable: false,
     show: false, // Don't show until ready
     skipTaskbar: true, // Don't show in taskbar
     icon: path.join(__dirname, 'icon.png'),

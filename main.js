@@ -185,7 +185,9 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     // Ensure full screen size and show without animation
     mainWindow.setBounds({ x, y, width, height });
+    mainWindow.setOpacity(0); // Start invisible to prevent flash
     mainWindow.show();
+    fadeInWindow(); // Fade in smoothly on first show
   });
 
   // Open DevTools in development
@@ -255,8 +257,6 @@ function fadeInWindow() {
   const interval = duration / steps;
   let currentStep = 0;
 
-  mainWindow.setOpacity(0);
-
   const fadeInterval = setInterval(() => {
     currentStep++;
     const opacity = currentStep / steps;
@@ -306,6 +306,7 @@ function toggleWindow() {
 
       // Set bounds before showing to prevent resize animation
       mainWindow.setBounds({ x, y, width, height });
+      mainWindow.setOpacity(0); // Set opacity to 0 BEFORE showing to prevent flash
       mainWindow.show();
       mainWindow.focus();
 

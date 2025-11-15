@@ -185,11 +185,8 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     // Ensure full screen size and show instantly
     mainWindow.setBounds({ x, y, width, height });
+    mainWindow.setOpacity(1);
     mainWindow.show();
-    // Restore opacity immediately after show
-    setImmediate(() => {
-      mainWindow.setOpacity(1);
-    });
   });
 
   // Open DevTools in development
@@ -285,14 +282,11 @@ function toggleWindow() {
       const activeDisplay = screen.getDisplayNearestPoint(cursorPoint);
       const { x, y, width, height } = activeDisplay.workArea;
 
-      // Set bounds before showing to prevent resize animation
+      // Set bounds and opacity before showing to prevent glitch
       mainWindow.setBounds({ x, y, width, height });
+      mainWindow.setOpacity(1);
       mainWindow.show();
       mainWindow.focus();
-      // Restore opacity after show() completes
-      setImmediate(() => {
-        mainWindow.setOpacity(1);
-      });
     }
   }
 }

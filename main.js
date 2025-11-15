@@ -186,6 +186,10 @@ function createWindow() {
     // Ensure full screen size and show instantly
     mainWindow.setBounds({ x, y, width, height });
     mainWindow.show();
+    // Restore opacity immediately after show
+    setImmediate(() => {
+      mainWindow.setOpacity(1);
+    });
   });
 
   // Open DevTools in development
@@ -285,6 +289,10 @@ function toggleWindow() {
       mainWindow.setBounds({ x, y, width, height });
       mainWindow.show();
       mainWindow.focus();
+      // Restore opacity after show() completes
+      setImmediate(() => {
+        mainWindow.setOpacity(1);
+      });
     }
   }
 }

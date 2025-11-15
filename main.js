@@ -250,8 +250,8 @@ function createWindow() {
 function fadeInWindow() {
   if (!mainWindow) return;
 
-  const steps = 20; // Number of animation steps
-  const duration = 300; // Total duration in ms
+  const steps = 10; // Number of animation steps
+  const duration = 100; // Total duration in ms
   const interval = duration / steps;
   let currentStep = 0;
 

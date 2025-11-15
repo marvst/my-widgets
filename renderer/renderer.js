@@ -46,8 +46,8 @@ let currentTabCycleShortcut = 'CommandOrControl+Tab';
 
 // Compact mode header visibility state
 let headerVisibilityTimeout = null;
-const HEADER_HIDE_DELAY = 2000;  // 2 seconds
-const HEADER_TAB_SWITCH_DELAY = 3000;  // 3 seconds on tab switch
+const HEADER_HIDE_DELAY = 300;  // 300ms - matches show animation time
+const HEADER_TAB_SWITCH_DELAY = 300;  // 300ms - matches show animation time
 const HEADER_HOVER_THRESHOLD = 80;  // pixels from top
 
 // Track modal state locally for header behavior
@@ -311,17 +311,15 @@ function focusAutoFocusWidget() {
   }
 
   // Find the webview for this widget and focus it
-  setTimeout(() => {
-    const widgetElement = document.querySelector(`[data-widget-id="${autoFocusWidget.id}"]`);
-    if (widgetElement) {
-      const webview = widgetElement.querySelector('webview');
-      if (webview) {
-        webview.focus();
-        console.log(`Auto-focused widget: ${autoFocusWidget.name}`);
-        lastAutoFocusedTab = currentTabId;
-      }
+  const widgetElement = document.querySelector(`[data-widget-id="${autoFocusWidget.id}"]`);
+  if (widgetElement) {
+    const webview = widgetElement.querySelector('webview');
+    if (webview) {
+      webview.focus();
+      console.log(`Auto-focused widget: ${autoFocusWidget.name}`);
+      lastAutoFocusedTab = currentTabId;
     }
-  }, 100); // Small delay to ensure webview is fully rendered
+  }
 }
 
 // Create a widget DOM element

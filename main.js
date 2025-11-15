@@ -250,8 +250,8 @@ function createWindow() {
 function fadeInWindow() {
   if (!mainWindow) return;
 
-  const steps = 10; // Number of animation steps
-  const duration = 100; // Total duration in ms
+  const steps = 5; // Number of animation steps
+  const duration = 50; // Total duration in ms
   const interval = duration / steps;
   let currentStep = 0;
 
@@ -273,8 +273,8 @@ function fadeInWindow() {
 function fadeOutWindow(callback) {
   if (!mainWindow) return;
 
-  const steps = 15; // Number of animation steps
-  const duration = 100; // Total duration in ms
+  const steps = 5; // Number of animation steps
+  const duration = 50; // Total duration in ms
   const interval = duration / steps;
   let currentStep = steps;
 

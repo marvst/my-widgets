@@ -245,7 +245,7 @@ function showWindowWithDelay() {
   mainWindow.show();
   setTimeout(() => {
     mainWindow.setOpacity(1);
-  }, 3000);
+  }, 50);
 }
 
 // Toggle window visibility

@@ -1132,8 +1132,10 @@ function setupCompactModeHover() {
     showHeader();
   });
 
-  header.addEventListener('mouseleave', () => {
+  header.addEventListener('mouseleave', (e) => {
     if (!body.classList.contains('compact-mode')) return;
+    // Don't hide if mouse is still at the top edge
+    if (e.clientY < HEADER_HOVER_THRESHOLD) return;
     scheduleHeaderHide();
   });
 }
